@@ -334,6 +334,7 @@ export default function App() {
               <div className="text-sm text-fog/80">
                 <div className="font-display tracking-[0.18em] text-paper">MONOCHROME STUDIO</div>
                 <div className="mt-1">A deliberately tiny, high-feel landing page.</div>
+              <div className="mt-2 text-xs text-fog/60">Stanley Labs</div>
               </div>
               <div className="text-sm text-fog/80">© {new Date().getFullYear()}</div>
             </div>
