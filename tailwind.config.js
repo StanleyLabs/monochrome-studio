@@ -5,12 +5,33 @@ export default {
     extend: {
       fontFamily: {
         serif: [
+          "Fraunces",
           "ui-serif",
           "Georgia",
           "Cambria",
           "Times New Roman",
           "Times",
           "serif",
+        ],
+        sans: [
+          "Inter",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica",
+          "Arial",
+        ],
+        mono: [
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Monaco",
+          "Consolas",
+          "Liberation Mono",
+          "Courier New",
+          "monospace",
         ],
       },
     },
