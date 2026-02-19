@@ -17,34 +17,93 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function Modal({ open, title, onClose }: { open: boolean; title: string; onClose: () => void }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true">
+      <div className="w-full max-w-3xl overflow-hidden rounded-3xl border border-black/10 bg-[#fbf7f1] shadow-[0_30px_90px_rgba(0,0,0,0.25)]">
+        <div className="flex items-center justify-between border-b border-black/10 bg-white/60 px-5 py-4">
+          <div className="font-mono text-xs text-black/70">{title}</div>
+          <button
+            onClick={onClose}
+            className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-black/80 hover:bg-white/90"
+          >
+            Close
+          </button>
+        </div>
+        <div className="p-0">
+          <iframe title="Deck" src="/deck.html" className="h-[70vh] w-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState<"studio" | "product" | "systems">("studio");
+  const [deckOpen, setDeckOpen] = useState(false);
 
   const tabs = useMemo(
     () =>
       ({
         studio: {
-          title: "Studio-grade pages",
-          copy: "Editorial typography, strong spacing, and frictionless conversion patterns.",
-          bullets: ["Hero + CTA that reads like print", "Fast interactions", "Accessible by default"],
+          title: "Studio-grade landing pages",
+          copy: "Editorial typography, sharp hierarchy, and conversion patterns that don’t feel salesy.",
+          bullets: [
+            "Messaging + structure before pixels",
+            "Design system so it scales",
+            "Performance + accessibility baked in",
+          ],
         },
         product: {
-          title: "Product-like feel",
-          copy: "A landing page can feel like software—without looking like a dashboard.",
-          bullets: ["Micro-interactions", "Crisp components", "No bloat"],
+          title: "Product-like UX",
+          copy: "Subtle interaction (tabs, toggles, hover states) that makes the page feel alive.",
+          bullets: [
+            "Micro-interactions that stay fast",
+            "Clear states + focus handling",
+            "No fragile animation dependencies",
+          ],
         },
         systems: {
-          title: "Design systems",
-          copy: "Repeatable tokens so the site scales beyond a single page.",
-          bullets: ["Type scale", "Spacing rhythm", "Component library"],
+          title: "Systems, not one-offs",
+          copy: "Tokens and components that make future pages painless (and consistent).",
+          bullets: ["Type scale + spacing rhythm", "Reusable components", "Simple content editing"],
         },
       }) as const,
     []
   );
 
+  const caseStudies = useMemo(
+    () =>
+      [
+        {
+          title: "Boutique hotel launch",
+          meta: "Landing + booking flow",
+          result: "−22% drop-off",
+          body: "Rebuilt the above-the-fold message, simplified the navigation, and tightened the CTA path to booking.",
+          bullets: ["Information architecture", "Copy + layout", "Performance pass"],
+        },
+        {
+          title: "Hardware product teaser",
+          meta: "Pre-order campaign",
+          result: "+31% email capture",
+          body: "Designed a single-scroll narrative with proof points, spec callouts, and an ultra-light signup form.",
+          bullets: ["Design system", "Interactive sections", "Analytics-ready"],
+        },
+        {
+          title: "Creative studio portfolio",
+          meta: "Work + services",
+          result: "More qualified leads",
+          body: "Built case study templates with consistent structure so every project reads clearly and looks premium.",
+          bullets: ["Case study layout", "Component library", "CMS-ready structure"],
+        },
+      ],
+    []
+  );
+
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-50 border-b border-black/10 bg-[#fbf7f1]/80 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-black/10 bg-[#fbf7f1]/80 backdrop-blur">
         <Container>
           <div className="flex h-16 items-center justify-between">
             <a href="#" className="inline-flex items-center gap-3">
@@ -72,10 +131,7 @@ export default function App() {
               </a>
             </nav>
 
-            <a
-              href="#contact"
-              className="sm:hidden rounded-full bg-black px-4 py-2 text-sm font-semibold text-white"
-            >
+            <a href="#contact" className="sm:hidden rounded-full bg-black px-4 py-2 text-sm font-semibold text-white">
               Contact
             </a>
           </div>
@@ -98,8 +154,7 @@ export default function App() {
                   A landing page that feels handcrafted.
                 </h1>
                 <p className="mt-5 max-w-xl text-base leading-relaxed text-black/70 sm:text-lg">
-                  Monochrome Studio is a sample landing page with an editorial aesthetic—warm paper,
-                  crisp type, and subtle interaction.
+                  Warm paper. Serious type. Quiet motion. Built to convert without feeling like a funnel.
                 </p>
 
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -109,37 +164,43 @@ export default function App() {
                   >
                     Start a project
                   </a>
-                  <a
-                    href="#approach"
+                  <button
+                    type="button"
+                    onClick={() => setDeckOpen(true)}
                     className="inline-flex items-center justify-center rounded-full border border-black/15 bg-white/60 px-6 py-3 text-sm font-semibold text-black/80 hover:bg-white"
                   >
-                    See approach
-                  </a>
+                    View deck
+                  </button>
                 </div>
 
                 <div className="mt-10 grid gap-4 sm:grid-cols-3">
-                  <Stat label="Tone" value="Editorial" />
-                  <Stat label="Motion" value="Quiet" />
-                  <Stat label="Build" value="Fast" />
+                  <Stat label="Deliverable" value="Design system" />
+                  <Stat label="Speed" value="Performance" />
+                  <Stat label="Outcome" value="Conversion" />
                 </div>
               </div>
 
               <div className="rounded-3xl border border-black/10 bg-white/70 p-6">
-                <div className="font-mono text-xs text-black/60">Preview</div>
+                <div className="font-mono text-xs text-black/60">What you get</div>
                 <div className="mt-3 rounded-2xl border border-black/10 bg-[#0b0d12] p-5 text-white">
                   <div className="flex items-center justify-between">
-                    <div className="font-mono text-xs text-white/70">Brand system</div>
+                    <div className="font-mono text-xs text-white/70">A clear narrative</div>
                     <div className="rounded-full bg-white/10 px-3 py-1 text-xs">v1</div>
                   </div>
-                  <div className="mt-4 font-serif text-2xl">Typography + spacing</div>
+                  <div className="mt-4 font-serif text-2xl">Message → proof → action</div>
                   <div className="mt-2 text-sm text-white/70">
-                    One accent. Warm neutrals. A rhythm you can feel.
+                    Layout decisions are made to reduce cognitive load and increase intent.
                   </div>
                   <div className="mt-5 grid grid-cols-2 gap-3">
-                    {["Hero", "Grid", "Pricing", "FAQ"].map((x) => (
-                      <div key={x} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                        <div className="font-mono text-xs text-white/70">{x}</div>
-                        <div className="mt-2 h-2 rounded bg-white/10" />
+                    {[
+                      { t: "Structure", d: "Sections that earn the scroll" },
+                      { t: "Design", d: "Type, spacing, components" },
+                      { t: "Build", d: "Fast, accessible implementation" },
+                      { t: "Launch", d: "Analytics-ready handoff" },
+                    ].map((x) => (
+                      <div key={x.t} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                        <div className="font-mono text-xs text-white/70">{x.t}</div>
+                        <div className="mt-2 text-xs text-white/65">{x.d}</div>
                       </div>
                     ))}
                   </div>
@@ -155,21 +216,33 @@ export default function App() {
               <div>
                 <h2 className="font-serif text-3xl tracking-tight text-black/90">Selected work</h2>
                 <p className="mt-2 max-w-2xl text-black/65">
-                  Clean layouts, strong hierarchy, and the kind of interaction you notice only because
-                  it feels right.
+                  More substance, fewer vibes: clear deliverables and measurable outcomes.
                 </p>
               </div>
-              <div className="font-mono text-xs text-black/50">(Sample tiles)</div>
+              <div className="font-mono text-xs text-black/50">(Sample case studies)</div>
             </div>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
-              {["A campaign page", "A product teaser", "A studio portfolio"].map((x) => (
-                <div key={x} className="rounded-3xl border border-black/10 bg-white/70 p-6">
-                  <div className="font-mono text-xs text-black/60">Case study</div>
-                  <div className="mt-3 font-serif text-xl text-black/90">{x}</div>
-                  <div className="mt-2 text-sm text-black/65">
-                    Minimal sections, bold type, and a focused conversion path.
+              {caseStudies.map((c) => (
+                <div key={c.title} className="rounded-3xl border border-black/10 bg-white/70 p-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="font-mono text-xs text-black/60">{c.meta}</div>
+                      <div className="mt-3 font-serif text-xl text-black/90">{c.title}</div>
+                    </div>
+                    <div className="shrink-0 rounded-full border border-black/10 bg-white px-3 py-1 font-mono text-xs text-black/70">
+                      {c.result}
+                    </div>
                   </div>
+                  <div className="mt-3 text-sm text-black/65">{c.body}</div>
+                  <ul className="mt-4 grid gap-2">
+                    {c.bullets.map((b) => (
+                      <li key={b} className="rounded-2xl border border-black/10 bg-white/60 p-3">
+                        <div className="font-mono text-xs text-black/60">▸</div>
+                        <div className="mt-1 text-sm text-black/80">{b}</div>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ))}
             </div>
@@ -180,7 +253,7 @@ export default function App() {
           <Container>
             <h2 className="font-serif text-3xl tracking-tight text-black/90">Approach</h2>
             <p className="mt-2 max-w-2xl text-black/65">
-              A simple interaction that changes the narrative—without turning the page into a gimmick.
+              One interactive element. One strong narrative. No gimmicks.
             </p>
 
             <div className="mt-8 rounded-3xl border border-black/10 bg-white/70 p-6 sm:p-8">
@@ -225,23 +298,22 @@ export default function App() {
             <div className="rounded-3xl border border-black/10 bg-black p-8 text-white sm:p-10">
               <h2 className="font-serif text-3xl tracking-tight">Ready when you are.</h2>
               <p className="mt-2 max-w-2xl text-white/70">
-                This is a sample CTA block. Replace with a real form or scheduling link.
+                Email opens your mail client. Deck opens an embedded page you can replace with a real PDF later.
               </p>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <a
-                  href="#"
-                  onClick={(e) => e.preventDefault()}
+                  href="mailto:hello@stanleylabs.co?subject=Monochrome%20Studio%20Inquiry"
                   className="inline-flex items-center justify-center rounded-full bg-[#f59e0b] px-6 py-3 text-sm font-semibold text-black hover:bg-[#f59e0b]/90"
                 >
                   Email us
                 </a>
-                <a
-                  href="#"
-                  onClick={(e) => e.preventDefault()}
+                <button
+                  type="button"
+                  onClick={() => setDeckOpen(true)}
                   className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10"
                 >
                   View deck
-                </a>
+                </button>
               </div>
             </div>
           </Container>
@@ -260,6 +332,8 @@ export default function App() {
           </Container>
         </footer>
       </main>
+
+      <Modal open={deckOpen} title="View deck" onClose={() => setDeckOpen(false)} />
     </div>
   );
 }
