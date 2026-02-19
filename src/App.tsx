@@ -1,152 +1,82 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 function cn(...x: Array<string | false | null | undefined>) {
   return x.filter(Boolean).join(" ");
 }
 
 function Container({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto w-full max-w-6xl px-5 sm:px-8">{children}</div>;
-}
-
-function useMouseGlow() {
-  const ref = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    let raf = 0;
-
-    const onMove = (e: PointerEvent) => {
-      const r = el.getBoundingClientRect();
-      const x = ((e.clientX - r.left) / r.width) * 100;
-      const y = ((e.clientY - r.top) / r.height) * 100;
-
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        el.style.setProperty("--mx", `${x}%`);
-        el.style.setProperty("--my", `${y}%`);
-      });
-    };
-
-    window.addEventListener("pointermove", onMove);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("pointermove", onMove);
-    };
-  }, []);
-
-  return ref;
+  return <div className="mx-auto w-full max-w-6xl px-5 sm:px-10">{children}</div>;
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-4 shadow-insetHairline">
-      <div className="font-mono text-xs text-fog/70">{label}</div>
-      <div className="mt-2 font-display text-xl text-paper">{value}</div>
+    <div className="rounded-2xl border border-black/10 bg-white/70 p-5">
+      <div className="font-mono text-xs text-black/60">{label}</div>
+      <div className="mt-2 font-serif text-2xl text-black/90">{value}</div>
     </div>
   );
 }
 
-function FAQItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <button
-      type="button"
-      className={cn(
-        "w-full rounded-2xl border border-white/10 bg-white/5 p-5 text-left shadow-insetHairline",
-        "transition hover:bg-white/10"
-      )}
-      onClick={() => setOpen((s) => !s)}
-      aria-expanded={open}
-    >
-      <div className="flex items-start justify-between gap-6">
-        <div>
-          <div className="font-display text-lg text-paper">{q}</div>
-          <div className={cn("mt-2 text-sm leading-relaxed text-fog/85", !open && "hidden")}>
-            {a}
-          </div>
-        </div>
-        <div className="mt-1 font-mono text-xs text-electric">{open ? "−" : "+"}</div>
-      </div>
-    </button>
-  );
-}
-
 export default function App() {
-  const glowRef = useMouseGlow();
-  const [plan, setPlan] = useState<"starter" | "pro" | "studio">("pro");
+  const [tab, setTab] = useState<"studio" | "product" | "systems">("studio");
 
-  const plans = useMemo(
+  const tabs = useMemo(
     () =>
       ({
-        starter: {
-          name: "Starter",
-          price: "$0",
-          blurb: "For building momentum.",
-          bullets: ["1 landing page", "Basic SEO", "Responsive UI", "Email capture"],
-        },
-        pro: {
-          name: "Pro",
-          price: "$19",
-          blurb: "For shipping weekly.",
-          bullets: ["Components library", "Animations", "Analytics", "A/B-ready"],
-        },
         studio: {
-          name: "Studio",
-          price: "$49",
-          blurb: "For teams that care.",
-          bullets: ["Design system", "Multi-page", "CMS-ready", "Priority support"],
+          title: "Studio-grade pages",
+          copy: "Editorial typography, strong spacing, and frictionless conversion patterns.",
+          bullets: ["Hero + CTA that reads like print", "Fast interactions", "Accessible by default"],
+        },
+        product: {
+          title: "Product-like feel",
+          copy: "A landing page can feel like software—without looking like a dashboard.",
+          bullets: ["Micro-interactions", "Crisp components", "No bloat"],
+        },
+        systems: {
+          title: "Design systems",
+          copy: "Repeatable tokens so the site scales beyond a single page.",
+          bullets: ["Type scale", "Spacing rhythm", "Component library"],
         },
       }) as const,
     []
   );
 
   return (
-    <div ref={glowRef as any} className="min-h-dvh bg-ink text-paper">
-      {/* background glow */}
-      <div
-        className="pointer-events-none fixed inset-0 opacity-70"
-        style={{
-          background:
-            "radial-gradient(900px circle at var(--mx, 20%) var(--my, 15%), rgba(46,242,194,0.20), transparent 55%), radial-gradient(900px circle at 85% 35%, rgba(45,107,255,0.18), transparent 55%)",
-        }}
-      />
-
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-ink/70 backdrop-blur">
+    <div className="min-h-dvh">
+      <header className="sticky top-0 z-50 border-b border-black/10 bg-[#fbf7f1]/80 backdrop-blur">
         <Container>
           <div className="flex h-16 items-center justify-between">
-            <a className="group inline-flex items-center gap-3" href="#">
-              <div className="grid size-9 place-items-center rounded-md bg-graphite shadow-insetHairline">
-                <span className="font-mono text-xs text-mint">SL</span>
+            <a href="#" className="inline-flex items-center gap-3">
+              <div className="grid size-9 place-items-center rounded-xl border border-black/10 bg-white">
+                <span className="font-mono text-xs text-black/70">MS</span>
               </div>
               <div className="leading-tight">
-                <div className="font-display text-sm tracking-[0.18em] text-paper">
-                  MONOCHROME STUDIO
-                </div>
-                <div className="font-mono text-[11px] text-fog/80">Interactive landing page sample</div>
+                <div className="font-serif text-base tracking-tight text-black/90">Monochrome Studio</div>
+                <div className="font-mono text-[11px] text-black/55">Editorial landing sample</div>
               </div>
             </a>
-            <nav className="hidden items-center gap-6 sm:flex">
-              <a href="#features" className="text-sm text-fog/90 hover:text-paper">
-                Features
+
+            <nav className="hidden items-center gap-8 sm:flex">
+              <a href="#work" className="underline-sweep text-sm text-black/70 hover:text-black">
+                Work
               </a>
-              <a href="#pricing" className="text-sm text-fog/90 hover:text-paper">
-                Pricing
+              <a href="#approach" className="underline-sweep text-sm text-black/70 hover:text-black">
+                Approach
               </a>
               <a
-                href="#cta"
-                className="rounded-md bg-mint px-4 py-2 text-sm font-semibold text-ink hover:bg-mint/90"
+                href="#contact"
+                className="rounded-full bg-black px-5 py-2 text-sm font-semibold text-white hover:bg-black/90"
               >
-                Start free
+                Get in touch
               </a>
             </nav>
+
             <a
-              href="#cta"
-              className="sm:hidden rounded-md bg-mint px-3 py-2 text-sm font-semibold text-ink"
+              href="#contact"
+              className="sm:hidden rounded-full bg-black px-4 py-2 text-sm font-semibold text-white"
             >
-              Start
+              Contact
             </a>
           </div>
         </Container>
@@ -155,188 +85,177 @@ export default function App() {
       <main>
         <section className="relative overflow-hidden">
           <div className="grain absolute inset-0" />
+          <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_20%_10%,rgba(245,158,11,0.10),transparent_55%),radial-gradient(900px_circle_at_85%_20%,rgba(0,0,0,0.06),transparent_55%)]" />
+
           <Container>
-            <div className="relative py-16 sm:py-24">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono text-xs text-fog/80">
-                <span className="text-mint">●</span> Zero bloat. Maximum feel.
+            <div className="relative grid gap-10 py-16 sm:grid-cols-2 sm:items-center sm:py-24">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/60 px-4 py-1 font-mono text-xs text-black/60">
+                  NEW • designed like print, built like software
+                </div>
+
+                <h1 className="mt-6 font-serif text-4xl leading-[1.05] tracking-tight text-black/95 sm:text-6xl">
+                  A landing page that feels handcrafted.
+                </h1>
+                <p className="mt-5 max-w-xl text-base leading-relaxed text-black/70 sm:text-lg">
+                  Monochrome Studio is a sample landing page with an editorial aesthetic—warm paper,
+                  crisp type, and subtle interaction.
+                </p>
+
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <a
+                    href="#contact"
+                    className="inline-flex items-center justify-center rounded-full bg-[#f59e0b] px-6 py-3 text-sm font-semibold text-black hover:bg-[#f59e0b]/90"
+                  >
+                    Start a project
+                  </a>
+                  <a
+                    href="#approach"
+                    className="inline-flex items-center justify-center rounded-full border border-black/15 bg-white/60 px-6 py-3 text-sm font-semibold text-black/80 hover:bg-white"
+                  >
+                    See approach
+                  </a>
+                </div>
+
+                <div className="mt-10 grid gap-4 sm:grid-cols-3">
+                  <Stat label="Tone" value="Editorial" />
+                  <Stat label="Motion" value="Quiet" />
+                  <Stat label="Build" value="Fast" />
+                </div>
               </div>
 
-              <h1 className="mt-6 max-w-3xl font-display text-4xl leading-[1.05] tracking-tight text-paper sm:text-6xl">
-                The simplest landing page that still feels like a product.
-              </h1>
-              <p className="mt-5 max-w-2xl text-base leading-relaxed text-fog/90 sm:text-lg">
-                This sample is built with React + Tailwind: crisp UI, microinteractions, and an
-                interactive pricing switcher—without a heavyweight animation library.
-              </p>
-
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <a
-                  href="#cta"
-                  className="shimmer inline-flex items-center justify-center rounded-md bg-mint px-6 py-3 text-sm font-semibold text-ink"
-                >
-                  Start free
-                </a>
-                <a
-                  href="#pricing"
-                  className="inline-flex items-center justify-center rounded-md border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-paper hover:bg-white/10"
-                >
-                  See pricing
-                </a>
-              </div>
-
-              <div className="mt-10 grid gap-4 sm:grid-cols-3">
-                <Stat label="Time to value" value="< 2 min" />
-                <Stat label="Bundle mindset" value="Performance" />
-                <Stat label="Design" value="Cinematic" />
-              </div>
-
-              <div className="mt-10 grid gap-4 sm:grid-cols-2">
-                {["Lightning-fast UX", "Copy that sells", "Accessible by default", "Delightful details"].map(
-                  (x) => (
-                    <div
-                      key={x}
-                      className="shimmer rounded-2xl border border-white/10 bg-white/5 p-6 shadow-insetHairline"
-                    >
-                      <div className="font-display text-lg text-paper">{x}</div>
-                      <div className="mt-2 text-sm leading-relaxed text-fog/85">
-                        A simple card with a subtle shimmer border on hover. It feels premium, but
-                        it’s just CSS.
+              <div className="rounded-3xl border border-black/10 bg-white/70 p-6">
+                <div className="font-mono text-xs text-black/60">Preview</div>
+                <div className="mt-3 rounded-2xl border border-black/10 bg-[#0b0d12] p-5 text-white">
+                  <div className="flex items-center justify-between">
+                    <div className="font-mono text-xs text-white/70">Brand system</div>
+                    <div className="rounded-full bg-white/10 px-3 py-1 text-xs">v1</div>
+                  </div>
+                  <div className="mt-4 font-serif text-2xl">Typography + spacing</div>
+                  <div className="mt-2 text-sm text-white/70">
+                    One accent. Warm neutrals. A rhythm you can feel.
+                  </div>
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    {["Hero", "Grid", "Pricing", "FAQ"].map((x) => (
+                      <div key={x} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                        <div className="font-mono text-xs text-white/70">{x}</div>
+                        <div className="mt-2 h-2 rounded bg-white/10" />
                       </div>
-                    </div>
-                  )
-                )}
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </Container>
         </section>
 
-        <section id="features" className="py-16 sm:py-20">
+        <section id="work" className="py-16 sm:py-20">
           <Container>
-            <h2 className="font-display text-2xl text-paper sm:text-3xl">Features</h2>
-            <p className="mt-2 max-w-2xl text-fog/85">
-              A tiny set of interactions that makes the page feel alive.
-            </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="font-serif text-3xl tracking-tight text-black/90">Selected work</h2>
+                <p className="mt-2 max-w-2xl text-black/65">
+                  Clean layouts, strong hierarchy, and the kind of interaction you notice only because
+                  it feels right.
+                </p>
+              </div>
+              <div className="font-mono text-xs text-black/50">(Sample tiles)</div>
+            </div>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
-              {[
-                {
-                  t: "Mouse-reactive glow",
-                  d: "Background light follows the pointer (throttled via rAF).",
-                },
-                {
-                  t: "Shimmer borders",
-                  d: "Pure CSS hover treatment—no images, no SVG filters.",
-                },
-                {
-                  t: "Interactive pricing",
-                  d: "Switch plans instantly (works great for demos).",
-                },
-              ].map((x) => (
-                <div
-                  key={x.t}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-insetHairline"
-                >
-                  <div className="font-display text-lg text-paper">{x.t}</div>
-                  <div className="mt-2 text-sm leading-relaxed text-fog/85">{x.d}</div>
+              {["A campaign page", "A product teaser", "A studio portfolio"].map((x) => (
+                <div key={x} className="rounded-3xl border border-black/10 bg-white/70 p-6">
+                  <div className="font-mono text-xs text-black/60">Case study</div>
+                  <div className="mt-3 font-serif text-xl text-black/90">{x}</div>
+                  <div className="mt-2 text-sm text-black/65">
+                    Minimal sections, bold type, and a focused conversion path.
+                  </div>
                 </div>
               ))}
             </div>
           </Container>
         </section>
 
-        <section id="pricing" className="py-16 sm:py-20">
+        <section id="approach" className="py-16 sm:py-20">
           <Container>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="font-display text-2xl text-paper sm:text-3xl">Pricing</h2>
-                <p className="mt-2 max-w-2xl text-fog/85">
-                  Click to switch plans. Everything updates instantly.
-                </p>
-              </div>
+            <h2 className="font-serif text-3xl tracking-tight text-black/90">Approach</h2>
+            <p className="mt-2 max-w-2xl text-black/65">
+              A simple interaction that changes the narrative—without turning the page into a gimmick.
+            </p>
 
-              <div className="inline-flex rounded-xl border border-white/10 bg-white/5 p-1 shadow-insetHairline">
-                {(["starter", "pro", "studio"] as const).map((k) => (
-                  <button
-                    key={k}
-                    onClick={() => setPlan(k)}
-                    className={cn(
-                      "rounded-lg px-3 py-2 text-sm font-semibold transition",
-                      plan === k ? "bg-white/10 text-paper" : "text-fog hover:text-paper"
-                    )}
-                  >
-                    {plans[k].name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-insetHairline">
-                <div className="font-display text-xl text-paper">{plans[plan].name}</div>
-                <div className="mt-2 text-sm text-fog/80">{plans[plan].blurb}</div>
-                <div className="mt-6 flex items-end gap-2">
-                  <div className="font-display text-5xl text-paper">{plans[plan].price}</div>
-                  <div className="pb-2 text-sm text-fog/70">/ month</div>
+            <div className="mt-8 rounded-3xl border border-black/10 bg-white/70 p-6 sm:p-8">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="font-mono text-xs text-black/55">Focus</div>
+                <div className="inline-flex rounded-full border border-black/10 bg-white p-1">
+                  {(["studio", "product", "systems"] as const).map((k) => (
+                    <button
+                      key={k}
+                      onClick={() => setTab(k)}
+                      className={cn(
+                        "rounded-full px-4 py-2 text-sm font-semibold transition",
+                        tab === k ? "bg-black text-white" : "text-black/70 hover:text-black"
+                      )}
+                    >
+                      {k}
+                    </button>
+                  ))}
                 </div>
-                <ul className="mt-6 space-y-2 text-sm text-fog/85">
-                  {plans[plan].bullets.map((b) => (
-                    <li key={b} className="flex gap-2">
-                      <span className="mt-[2px] text-mint">▸</span>
-                      <span>{b}</span>
+              </div>
+
+              <div className="mt-7 grid gap-6 sm:grid-cols-2">
+                <div>
+                  <div className="font-serif text-2xl text-black/90">{tabs[tab].title}</div>
+                  <div className="mt-2 text-black/65">{tabs[tab].copy}</div>
+                </div>
+                <ul className="grid gap-3">
+                  {tabs[tab].bullets.map((b) => (
+                    <li key={b} className="rounded-2xl border border-black/10 bg-white/70 p-4">
+                      <div className="font-mono text-xs text-black/60">▸</div>
+                      <div className="mt-1 text-sm text-black/80">{b}</div>
                     </li>
                   ))}
                 </ul>
-                <a
-                  id="cta"
-                  href="#"
-                  className="shimmer mt-8 inline-flex w-full items-center justify-center rounded-md bg-mint px-6 py-3 text-sm font-semibold text-ink"
-                >
-                  Start {plans[plan].name}
-                </a>
-              </div>
-
-              <div className="grid gap-4">
-                <div className="rounded-2xl border border-white/10 bg-[radial-gradient(700px_circle_at_20%_10%,rgba(46,242,194,0.18),transparent_55%)] p-6 shadow-insetHairline">
-                  <div className="font-display text-lg text-paper">FAQ</div>
-                  <div className="mt-4 grid gap-3">
-                    <FAQItem
-                      q="Is this production-ready?"
-                      a="Yes—this is intentionally simple. It’s meant to be a clean starting point with great feel and good performance."
-                    />
-                    <FAQItem
-                      q="Can I swap the colors and type?"
-                      a="Absolutely. Everything is tailwind tokens + a few tiny utilities."
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-insetHairline">
-                  <div className="font-display text-lg text-paper">Form (sample)</div>
-                  <form className="mt-4 grid gap-3" onSubmit={(e) => e.preventDefault()}>
-                    <input
-                      className="h-11 rounded-md border border-white/10 bg-ink/50 px-3 text-paper outline-none ring-mint/40 focus:ring-2"
-                      placeholder="Email"
-                    />
-                    <button className="h-11 rounded-md bg-mint font-semibold text-ink hover:bg-mint/90">
-                      Join waitlist
-                    </button>
-                    <div className="text-xs text-fog/70">No spam. Just product updates.</div>
-                  </form>
-                </div>
               </div>
             </div>
           </Container>
         </section>
 
-        <footer className="border-t border-white/10 py-10">
+        <section id="contact" className="py-16 sm:py-20">
+          <Container>
+            <div className="rounded-3xl border border-black/10 bg-black p-8 text-white sm:p-10">
+              <h2 className="font-serif text-3xl tracking-tight">Ready when you are.</h2>
+              <p className="mt-2 max-w-2xl text-white/70">
+                This is a sample CTA block. Replace with a real form or scheduling link.
+              </p>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <a
+                  href="#"
+                  onClick={(e) => e.preventDefault()}
+                  className="inline-flex items-center justify-center rounded-full bg-[#f59e0b] px-6 py-3 text-sm font-semibold text-black hover:bg-[#f59e0b]/90"
+                >
+                  Email us
+                </a>
+                <a
+                  href="#"
+                  onClick={(e) => e.preventDefault()}
+                  className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10"
+                >
+                  View deck
+                </a>
+              </div>
+            </div>
+          </Container>
+        </section>
+
+        <footer className="border-t border-black/10 py-10">
           <Container>
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm text-fog/80">
-                <div className="font-display tracking-[0.18em] text-paper">MONOCHROME STUDIO</div>
-                <div className="mt-1">A deliberately tiny, high-feel landing page.</div>
-              <div className="mt-2 text-xs text-fog/60">Stanley Labs</div>
+              <div className="text-sm text-black/70">
+                <div className="font-serif text-black/90">Monochrome Studio</div>
+                <div className="mt-1">Editorial landing sample.</div>
+                <div className="mt-2 text-xs text-black/45">Stanley Labs</div>
               </div>
-              <div className="text-sm text-fog/80">© {new Date().getFullYear()}</div>
+              <div className="font-mono text-xs text-black/50">© {new Date().getFullYear()}</div>
             </div>
           </Container>
         </footer>
