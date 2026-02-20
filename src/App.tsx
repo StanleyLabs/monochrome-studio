@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 /* ── helpers ── */
 function cn(...x: Array<string | false | null | undefined>) {
@@ -38,8 +38,8 @@ function HeroCanvas() {
 
     const count = 80;
     const particles = Array.from({ length: count }, () => ({
-      x: Math.random() * 1,
-      y: Math.random() * 1,
+      x: Math.random(),
+      y: Math.random(),
       vx: (Math.random() - 0.5) * 0.0004,
       vy: (Math.random() - 0.5) * 0.0004,
       r: 1 + Math.random() * 2,
@@ -96,8 +96,98 @@ function HeroCanvas() {
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />;
 }
 
+/* ── lightbox carousel ── */
+function Lightbox({
+  works,
+  index,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  works: typeof artworks;
+  index: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const w = works[index];
+
+  // keyboard nav
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") onPrev();
+      if (e.key === "ArrowRight") onNext();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose, onPrev, onNext]);
+
+  // lock body scroll
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      {/* close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-6 right-6 z-10 text-white/50 hover:text-white transition-colors text-2xl leading-none"
+        aria-label="Close"
+      >
+        ✕
+      </button>
+
+      {/* counter */}
+      <div className="absolute top-6 left-6 text-[12px] tracking-[0.15em] uppercase text-white/30">
+        {index + 1} / {works.length}
+      </div>
+
+      {/* prev */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onPrev(); }}
+        className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 z-10 w-12 h-12 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all text-xl"
+        aria-label="Previous"
+      >
+        ‹
+      </button>
+
+      {/* next */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onNext(); }}
+        className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 z-10 w-12 h-12 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all text-xl"
+        aria-label="Next"
+      >
+        ›
+      </button>
+
+      {/* image + info */}
+      <div
+        className="flex flex-col items-center gap-6 px-16 max-w-4xl max-h-[85vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <img
+          src={w.image}
+          alt={`${w.title} by ${w.artist}`}
+          className="max-h-[65vh] max-w-full object-contain rounded-sm"
+        />
+        <div className="text-center">
+          <h3 className="text-white/90 text-lg font-light italic">{w.title}</h3>
+          <p className="text-white/60 text-sm mt-1">{w.artist}</p>
+          <p className="text-white/30 text-[12px] mt-1">{w.medium}, {w.year}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── data ── */
-const works = [
+const artworks = [
   {
     title: "Black in Deep Red",
     artist: "Mark Rothko",
@@ -115,11 +205,11 @@ const works = [
     aspect: "aspect-[4/5]",
   },
   {
-    title: "Untitled",
-    artist: "Robert Motherwell",
-    year: "1943",
-    medium: "Mixed media collage on paper",
-    image: "/images/robert-motherwell-untitled-1943.jpg",
+    title: "Peinture 202 × 143 cm",
+    artist: "Pierre Soulages",
+    year: "1979",
+    medium: "Oil on canvas",
+    image: "/images/pierre-soulages-1979.jpg",
     aspect: "aspect-[3/4]",
   },
   {
@@ -131,12 +221,12 @@ const works = [
     aspect: "aspect-[3/4]",
   },
   {
-    title: "Black Fire I",
-    artist: "Barnett Newman",
-    year: "1961",
-    medium: "Oil on canvas",
-    image: "/images/Black_Fire_I_Barnett_Newman_1961.jpg",
-    aspect: "aspect-[2/3]",
+    title: "Untitled #5",
+    artist: "Agnes Martin",
+    year: "1998",
+    medium: "Acrylic and graphite on canvas",
+    image: "/images/agnes-martin-untitled-5.jpg",
+    aspect: "aspect-square",
   },
   {
     title: "Burnt Umber & Ultramarine",
@@ -158,9 +248,29 @@ const exhibitions = [
 /* ── component ── */
 export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  const closeLightbox = useCallback(() => setLightboxIndex(null), []);
+  const prevImage = useCallback(() => {
+    setLightboxIndex((i) => (i === null ? null : (i - 1 + artworks.length) % artworks.length));
+  }, []);
+  const nextImage = useCallback(() => {
+    setLightboxIndex((i) => (i === null ? null : (i + 1) % artworks.length));
+  }, []);
 
   return (
     <div className="min-h-dvh">
+      {/* ── lightbox ── */}
+      {lightboxIndex !== null && (
+        <Lightbox
+          works={artworks}
+          index={lightboxIndex}
+          onClose={closeLightbox}
+          onPrev={prevImage}
+          onNext={nextImage}
+        />
+      )}
+
       {/* ── nav ── */}
       <header className="sticky top-0 z-50 border-b border-black/[0.06] bg-[#f5f2ed]/80 backdrop-blur-md">
         <Container>
@@ -263,8 +373,12 @@ export default function App() {
             </p>
 
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {works.map((w) => (
-                <div key={w.title} className="art-card group cursor-pointer">
+              {artworks.map((w, i) => (
+                <div
+                  key={w.title}
+                  className="art-card group cursor-pointer"
+                  onClick={() => setLightboxIndex(i)}
+                >
                   <div className={cn("overflow-hidden rounded-sm bg-neutral-200", w.aspect)}>
                     <img
                       src={w.image}
