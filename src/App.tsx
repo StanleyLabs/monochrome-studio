@@ -290,12 +290,12 @@ const artworks = [
     aspect: "aspect-[3/4]",
   },
   {
-    title: "Composition with Red, Blue and Yellow",
+    title: "Tableau I",
     artist: "Piet Mondrian",
-    year: "1930",
+    year: "1921",
     medium: "Oil on canvas",
     image: "/images/tableau-i-Piet-Mondrian-1921.jpg",
-    aspect: "aspect-square",
+    aspect: "aspect-[2/3]",
   },
   {
     title: "Burnt Umber & Ultramarine",
