@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 
 /* ── helpers ── */
 function cn(...x: Array<string | false | null | undefined>) {
@@ -111,17 +111,34 @@ function Lightbox({
   onNext: () => void;
 }) {
   const w = works[index];
+  const [visible, setVisible] = useState(false);
+  const [slideDir, setSlideDir] = useState<"none" | "left" | "right">("none");
+  const [slideKey, setSlideKey] = useState(index);
+  const closingRef = useRef(false);
+
+  // open animation
+  useLayoutEffect(() => {
+    requestAnimationFrame(() => setVisible(true));
+  }, []);
+
+  // slide animation on index change
+  useEffect(() => {
+    if (slideKey !== index) {
+      setSlideKey(index);
+    }
+  }, [index, slideKey]);
 
   // keyboard nav
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft") onPrev();
-      if (e.key === "ArrowRight") onNext();
+      if (e.key === "Escape") handleClose();
+      if (e.key === "ArrowLeft") { setSlideDir("left"); onPrev(); }
+      if (e.key === "ArrowRight") { setSlideDir("right"); onNext(); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onClose, onPrev, onNext]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onPrev, onNext]);
 
   // lock body scroll
   useEffect(() => {
@@ -129,29 +146,68 @@ function Lightbox({
     return () => { document.body.style.overflow = ""; };
   }, []);
 
+  const handleClose = () => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    setVisible(false);
+    setTimeout(onClose, 300);
+  };
+
+  const handlePrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSlideDir("left");
+    onPrev();
+  };
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSlideDir("right");
+    onNext();
+  };
+
+  // compute slide animation class
+  const slideClass =
+    slideDir === "none"
+      ? "animate-lightbox-fade-in"
+      : slideDir === "right"
+        ? "animate-lightbox-slide-left"
+        : "animate-lightbox-slide-right";
+
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm"
-      onClick={onClose}
+      className={cn(
+        "fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm transition-opacity duration-300",
+        visible ? "opacity-100" : "opacity-0"
+      )}
+      onClick={handleClose}
     >
-      {/* close button */}
+      {/* close */}
       <button
-        onClick={onClose}
-        className="absolute top-6 right-6 z-10 text-white/50 hover:text-white transition-colors text-2xl leading-none"
+        onClick={handleClose}
+        className={cn(
+          "absolute top-6 right-6 z-10 text-white/50 hover:text-white transition-all duration-300 text-2xl leading-none",
+          visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2"
+        )}
         aria-label="Close"
       >
         ✕
       </button>
 
       {/* counter */}
-      <div className="absolute top-6 left-6 text-[12px] tracking-[0.15em] uppercase text-white/30">
+      <div className={cn(
+        "absolute top-6 left-6 text-[12px] tracking-[0.15em] uppercase text-white/30 transition-all duration-300",
+        visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2"
+      )}>
         {index + 1} / {works.length}
       </div>
 
       {/* prev */}
       <button
-        onClick={(e) => { e.stopPropagation(); onPrev(); }}
-        className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 z-10 w-12 h-12 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all text-xl"
+        onClick={handlePrev}
+        className={cn(
+          "absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 z-10 w-12 h-12 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all duration-300 text-xl",
+          visible ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
+        )}
         aria-label="Previous"
       >
         ‹
@@ -159,8 +215,11 @@ function Lightbox({
 
       {/* next */}
       <button
-        onClick={(e) => { e.stopPropagation(); onNext(); }}
-        className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 z-10 w-12 h-12 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all text-xl"
+        onClick={handleNext}
+        className={cn(
+          "absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 z-10 w-12 h-12 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all duration-300 text-xl",
+          visible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-4"
+        )}
         aria-label="Next"
       >
         ›
@@ -168,15 +227,25 @@ function Lightbox({
 
       {/* image + info */}
       <div
-        className="flex flex-col items-center gap-6 px-16 max-w-4xl max-h-[85vh]"
+        key={index}
+        className={cn(
+          "flex flex-col items-center gap-6 px-16 max-w-4xl max-h-[85vh]",
+          slideClass
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         <img
           src={w.image}
           alt={`${w.title} by ${w.artist}`}
-          className="max-h-[65vh] max-w-full object-contain rounded-sm"
+          className={cn(
+            "max-h-[65vh] max-w-full object-contain rounded-sm transition-all duration-500",
+            visible ? "opacity-100 scale-100" : "opacity-0 scale-95"
+          )}
         />
-        <div className="text-center">
+        <div className={cn(
+          "text-center transition-all duration-500 delay-100",
+          visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+        )}>
           <h3 className="text-white/90 text-lg font-light italic">{w.title}</h3>
           <p className="text-white/60 text-sm mt-1">{w.artist}</p>
           <p className="text-white/30 text-[12px] mt-1">{w.medium}, {w.year}</p>
@@ -205,11 +274,11 @@ const artworks = [
     aspect: "aspect-[4/5]",
   },
   {
-    title: "Peinture 202 × 143 cm",
+    title: "Peinture, 5 mai",
     artist: "Pierre Soulages",
-    year: "1979",
+    year: "1959",
     medium: "Oil on canvas",
-    image: "/images/pierre-soulages-1979.jpg",
+    image: "/images/Peinture_5_mai_Pierre_Soulages_1959.jpg",
     aspect: "aspect-[3/4]",
   },
   {
@@ -221,11 +290,11 @@ const artworks = [
     aspect: "aspect-[3/4]",
   },
   {
-    title: "Untitled #5",
-    artist: "Agnes Martin",
-    year: "1998",
-    medium: "Acrylic and graphite on canvas",
-    image: "/images/agnes-martin-untitled-5.jpg",
+    title: "Composition with Red, Blue and Yellow",
+    artist: "Piet Mondrian",
+    year: "1930",
+    medium: "Oil on canvas",
+    image: "/images/tableau-i-Piet-Mondrian-1921.jpg",
     aspect: "aspect-square",
   },
   {
