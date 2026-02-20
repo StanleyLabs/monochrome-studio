@@ -559,17 +559,15 @@ export default function App() {
                 Let's talk about work.
               </h2>
               <p className="mt-5 text-[15px] leading-relaxed text-white/40">
-                For commissions, exhibitions, studio visits, or press inquiries.
+                This is a demo site — Monochrome Studio is a fictional business.
+                Built by <a href="https://stanleylabs.dev" target="_blank" rel="noreferrer" className="text-white/60 hover:text-white/80 underline underline-offset-2 transition-colors">Stanley Labs</a> as a portfolio piece.
               </p>
 
               <div className="mt-10 space-y-4">
-                <a
-                  href="mailto:studio@monochrome.art"
-                  className="block text-lg font-light text-white/70 hover:text-white transition-colors"
-                >
-                  studio@monochrome.art
-                </a>
-                <p className="text-[13px] text-white/30">Nashville, Tennessee</p>
+                <p className="text-lg font-light text-white/70">
+                  studio@example.com
+                </p>
+                <p className="text-[13px] text-white/30">Somewhere, USA</p>
               </div>
 
               <div className="mt-12 flex gap-8">
@@ -592,9 +590,9 @@ export default function App() {
         <Container>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <p className="text-[11px] tracking-[0.15em] uppercase text-white/20">
-              Monochrome Studio
+              Monochrome Studio — A fictional demo
             </p>
-            <p className="text-[11px] text-white/15">© {new Date().getFullYear()}</p>
+            <p className="text-[11px] text-white/15">Built by <a href="https://stanleylabs.dev" target="_blank" rel="noreferrer" className="text-white/25 hover:text-white/40 transition-colors">Stanley Labs</a></p>
           </div>
         </Container>
       </footer>
