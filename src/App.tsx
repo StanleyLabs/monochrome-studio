@@ -19,67 +19,46 @@ function HeroCanvas() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // offscreen canvas for persistent marks
+    const marks = document.createElement("canvas");
+    const mctx = marks.getContext("2d")!;
+
     let animId: number;
     let w = 0;
     let h = 0;
+    let dpr = 1;
 
     const resize = () => {
-      const dpr = window.devicePixelRatio || 1;
+      dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
       w = rect.width;
       h = rect.height;
+
+      // save existing marks
+      const snapshot = marks.width > 0 ? mctx.getImageData(0, 0, marks.width, marks.height) : null;
+
       canvas.width = w * dpr;
       canvas.height = h * dpr;
+      marks.width = w * dpr;
+      marks.height = h * dpr;
+
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // restore marks after resize
+      if (snapshot) {
+        mctx.putImageData(snapshot, 0, 0);
+      }
     };
 
     resize();
     window.addEventListener("resize", resize);
 
-    // brush state
-    let bx = 0;
-    let by = 0;
-    let angle = Math.random() * Math.PI * 2;
-    let speed = 1.8;
-    let turnNoise = Math.random() * 1000;
-
-    // stroke history — persistent marks
-    const strokes: Array<{ x: number; y: number; size: number; opacity: number; angle: number }> = [];
-    const maxStrokes = 2500;
-
-    // splatter particles
-    const splatters: Array<{
-      x: number; y: number; size: number; opacity: number; life: number; maxLife: number;
-    }> = [];
-
-    // brush tip shape — paint a bristle-like stamp
-    const paintBrush = (x: number, y: number, size: number, opacity: number, ang: number) => {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(ang);
-      ctx.globalAlpha = opacity;
-
-      // main bristle body
-      const bristles = 5 + Math.floor(size / 4);
-      for (let i = 0; i < bristles; i++) {
-        const offset = (i - bristles / 2) * (size / bristles) * 0.9;
-        const bristleLen = size * (0.6 + Math.random() * 0.5);
-        const bristleW = Math.max(0.5, size / bristles * 0.7);
-        ctx.beginPath();
-        ctx.ellipse(offset, 0, bristleW, bristleLen * 0.5, 0, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(30, 28, 25, ${0.3 + Math.random() * 0.4})`;
-        ctx.fill();
-      }
-
-      ctx.restore();
-    };
-
-    // simple 2D noise-ish function
+    // noise helpers
     const noise = (v: number) => {
       const s = Math.sin(v * 127.1 + 311.7) * 43758.5453;
       return s - Math.floor(s);
     };
-
     const smoothNoise = (v: number) => {
       const i = Math.floor(v);
       const f = v - i;
@@ -87,135 +66,201 @@ function HeroCanvas() {
       return noise(i) * (1 - t) + noise(i + 1) * t;
     };
 
-    // init brush position
-    const initBrush = () => {
-      bx = w * 0.5;
-      by = h * 0.5;
-    };
+    // brush state
+    let bx = w * 0.6;
+    let by = h * 0.4;
+    let angle = Math.random() * Math.PI * 2;
+    let targetAngle = angle;
+    let turnNoise = Math.random() * 1000;
+    let pressure = 0.7;
+    let targetPressure = 0.7;
+    let tilt = 0;
 
-    initBrush();
-
-    let t = 0;
     let phaseTimer = 0;
-    let currentStrokeSize = 6 + Math.random() * 10;
+    let currentStrokeSize = 8 + Math.random() * 10;
     let lifting = false;
+    let liftX = bx;
+    let liftY = by;
+    let t = 0;
+
+    // paint a bristle mark onto the offscreen canvas
+    const stampBristle = (x: number, y: number, size: number, opacity: number, ang: number, press: number) => {
+      mctx.save();
+      mctx.translate(x, y);
+      mctx.rotate(ang);
+      mctx.globalAlpha = opacity * press;
+
+      const spread = size * press;
+      const bristles = 6 + Math.floor(size / 3);
+
+      for (let i = 0; i < bristles; i++) {
+        const off = (i - bristles / 2) * (spread / bristles) * 1.1;
+        const bLen = size * (0.4 + Math.random() * 0.4) * press;
+        const bW = Math.max(0.4, spread / bristles * 0.6);
+        mctx.beginPath();
+        mctx.ellipse(off, 0, bW, bLen * 0.5, 0, 0, Math.PI * 2);
+        mctx.fillStyle = `rgba(30, 28, 25, ${0.25 + Math.random() * 0.35})`;
+        mctx.fill();
+      }
+
+      mctx.restore();
+    };
 
     const draw = () => {
       t += 1;
-      turnNoise += 0.012;
+      turnNoise += 0.008;
 
-      // slowly fade the whole canvas to let old marks age
-      // we redraw everything from strokes array instead
+      // clear display canvas, then composite marks + live brush
       ctx.clearRect(0, 0, w, h);
 
-      // steer brush with flowing curves
+      // ── steer brush ──
+      // layered noise for organic curves
       const n1 = smoothNoise(turnNoise) - 0.5;
-      const n2 = smoothNoise(turnNoise * 1.7 + 50) - 0.5;
-      angle += n1 * 0.12 + n2 * 0.06;
+      const n2 = smoothNoise(turnNoise * 1.3 + 50) - 0.5;
+      const n3 = smoothNoise(turnNoise * 0.4 + 200) - 0.5;
+      targetAngle += n1 * 0.08 + n2 * 0.05 + n3 * 0.03;
 
-      // slight pull toward center to keep brush in frame
-      const cx = w * 0.5;
+      // smooth angle interpolation for fluid motion
+      let angleDiff = targetAngle - angle;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      angle += angleDiff * 0.12;
+
+      // gentle pull toward center region (wide bounds since it's full-width)
+      const cx = w * 0.55;
       const cy = h * 0.5;
       const dx = cx - bx;
       const dy = cy - by;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const maxDist = Math.min(w, h) * 0.42;
-      if (dist > maxDist * 0.5) {
-        const pull = ((dist - maxDist * 0.5) / maxDist) * 0.03;
-        angle += Math.atan2(dy, dx) * pull - angle * pull * 0.3;
+      const maxDist = Math.max(w, h) * 0.4;
+      if (dist > maxDist * 0.3) {
+        const pull = ((dist - maxDist * 0.3) / maxDist) * 0.02;
+        const toCenter = Math.atan2(dy, dx);
+        targetAngle += (toCenter - targetAngle) * pull;
       }
 
-      // vary speed
-      speed = 1.5 + smoothNoise(turnNoise * 0.8 + 100) * 2;
+      // keep in bounds with soft wrapping
+      const margin = 30;
+      if (bx < margin) targetAngle = Math.abs(targetAngle) < Math.PI / 2 ? targetAngle : 0;
+      if (bx > w - margin) targetAngle = Math.abs(targetAngle) > Math.PI / 2 ? targetAngle : Math.PI;
+      if (by < margin) targetAngle = targetAngle > 0 ? targetAngle : Math.PI * 0.5;
+      if (by > h - margin) targetAngle = targetAngle < 0 ? targetAngle : -Math.PI * 0.5;
+
+      // variable speed — slow down on curves, speed up on straights
+      const curvature = Math.abs(angleDiff);
+      const speed = (2.0 + smoothNoise(turnNoise * 0.6 + 100) * 2.5) * (1 - curvature * 0.3);
 
       bx += Math.cos(angle) * speed;
       by += Math.sin(angle) * speed;
 
-      // stroke phases — paint, then lift, then paint again
+      // tilt wobble
+      tilt = Math.sin(t * 0.04) * 0.15 + Math.sin(t * 0.11) * 0.08;
+
+      // smooth pressure changes
+      targetPressure = 0.5 + smoothNoise(turnNoise * 0.5 + 300) * 0.5;
+      pressure += (targetPressure - pressure) * 0.05;
+
+      // ── stroke phases ──
       phaseTimer++;
-      if (!lifting && phaseTimer > 80 + Math.random() * 200) {
+      if (!lifting && phaseTimer > 120 + Math.random() * 250) {
         lifting = true;
+        liftX = bx;
+        liftY = by;
         phaseTimer = 0;
-      } else if (lifting && phaseTimer > 15 + Math.random() * 40) {
+      } else if (lifting && phaseTimer > 25 + Math.random() * 50) {
         lifting = false;
         phaseTimer = 0;
-        currentStrokeSize = 4 + Math.random() * 12;
+        currentStrokeSize = 5 + Math.random() * 14;
       }
 
-      // add stroke marks when painting
+      // ── stamp marks onto offscreen canvas ──
       if (!lifting) {
-        const size = currentStrokeSize * (0.7 + smoothNoise(t * 0.05) * 0.6);
-        const opacity = 0.08 + smoothNoise(t * 0.03 + 200) * 0.12;
-        strokes.push({ x: bx, y: by, size, opacity, angle });
+        const size = currentStrokeSize * (0.6 + smoothNoise(t * 0.04) * 0.5);
+        const opacity = 0.06 + smoothNoise(t * 0.025 + 200) * 0.1;
+        stampBristle(bx, by, size, opacity, angle + tilt, pressure);
 
-        // occasional splatter
-        if (Math.random() < 0.03) {
-          const count = 1 + Math.floor(Math.random() * 3);
+        // splatters
+        if (Math.random() < 0.025) {
+          const count = 1 + Math.floor(Math.random() * 4);
           for (let i = 0; i < count; i++) {
-            const sAngle = angle + (Math.random() - 0.5) * 2;
-            const sDist = 5 + Math.random() * 20;
-            splatters.push({
-              x: bx + Math.cos(sAngle) * sDist,
-              y: by + Math.sin(sAngle) * sDist,
-              size: 1 + Math.random() * 3,
-              opacity: 0.1 + Math.random() * 0.15,
-              life: 0,
-              maxLife: 300 + Math.random() * 200,
-            });
+            const sAngle = angle + (Math.random() - 0.5) * 2.5;
+            const sDist = 8 + Math.random() * 30;
+            const sx = bx + Math.cos(sAngle) * sDist;
+            const sy = by + Math.sin(sAngle) * sDist;
+            const sSize = 0.8 + Math.random() * 2.5;
+            mctx.beginPath();
+            mctx.arc(sx, sy, sSize, 0, Math.PI * 2);
+            mctx.fillStyle = `rgba(30, 28, 25, ${0.08 + Math.random() * 0.12})`;
+            mctx.fill();
           }
         }
-
-        if (strokes.length > maxStrokes) {
-          strokes.splice(0, strokes.length - maxStrokes);
-        }
       }
 
-      // render all strokes
-      for (const s of strokes) {
-        paintBrush(s.x, s.y, s.size, s.opacity, s.angle);
-      }
+      // ── composite marks onto display ──
+      ctx.drawImage(marks, 0, 0, w * dpr, h * dpr, 0, 0, w, h);
 
-      // render splatters
-      for (let i = splatters.length - 1; i >= 0; i--) {
-        const sp = splatters[i];
-        sp.life++;
-        const fade = 1 - sp.life / sp.maxLife;
-        if (fade <= 0) {
-          splatters.splice(i, 1);
-          continue;
-        }
-        ctx.beginPath();
-        ctx.arc(sp.x, sp.y, sp.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(30, 28, 25, ${sp.opacity * fade})`;
-        ctx.fill();
-      }
+      // ── draw the brush ──
+      const brushX = lifting ? liftX + (bx - liftX) * 0.3 : bx;
+      const brushY = lifting ? liftY + (by - liftY) * 0.3 - 15 * Math.sin(phaseTimer * 0.08) : by;
+      const brushAngle = angle + tilt - Math.PI * 0.5;
+      const brushLift = lifting ? 0.3 : 0.7;
 
-      // draw the brush itself (the "handle")
+      ctx.save();
+      ctx.globalAlpha = brushLift;
+      ctx.translate(brushX, brushY);
+      ctx.rotate(brushAngle);
+
+      // shadow when close to surface
       if (!lifting) {
-        ctx.save();
-        ctx.translate(bx, by);
-        ctx.rotate(angle - Math.PI * 0.5);
-
-        // handle
         ctx.beginPath();
-        ctx.roundRect(-2.5, -35, 5, 30, 2);
-        ctx.fillStyle = "rgba(80, 65, 50, 0.5)";
+        ctx.ellipse(2, 8, currentStrokeSize * 0.35 * pressure, 3, 0.2, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(0,0,0,0.06)";
         ctx.fill();
-
-        // ferrule
-        ctx.beginPath();
-        ctx.roundRect(-3.5, -8, 7, 8, 1);
-        ctx.fillStyle = "rgba(160, 155, 145, 0.45)";
-        ctx.fill();
-
-        // bristle tip
-        ctx.beginPath();
-        ctx.ellipse(0, 4, currentStrokeSize * 0.4, 6, 0, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(30, 28, 25, 0.35)";
-        ctx.fill();
-
-        ctx.restore();
       }
+
+      // handle — wooden brush handle
+      const wobble = Math.sin(t * 0.06) * 1.5;
+      ctx.beginPath();
+      ctx.roundRect(-3 + wobble * 0.3, -50, 6, 38, 2.5);
+      ctx.fillStyle = "rgba(120, 90, 60, 0.55)";
+      ctx.fill();
+      // handle highlight
+      ctx.beginPath();
+      ctx.roundRect(-1 + wobble * 0.3, -48, 2, 34, 1);
+      ctx.fillStyle = "rgba(180, 150, 110, 0.2)";
+      ctx.fill();
+
+      // ferrule — metal band
+      ctx.beginPath();
+      ctx.roundRect(-4.5 + wobble * 0.2, -14, 9, 12, 1.5);
+      ctx.fillStyle = "rgba(170, 165, 155, 0.5)";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect(-3.5 + wobble * 0.2, -13, 7, 10, 1);
+      ctx.fillStyle = "rgba(190, 185, 175, 0.25)";
+      ctx.fill();
+
+      // bristle tip — varies with pressure
+      const tipSpread = currentStrokeSize * 0.4 * (0.7 + pressure * 0.5);
+      const tipLen = 8 + pressure * 4;
+      ctx.beginPath();
+      ctx.ellipse(wobble * 0.15, tipLen * 0.3, tipSpread, tipLen * 0.5, 0, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(30, 28, 25, ${0.25 + pressure * 0.15})`;
+      ctx.fill();
+
+      // individual bristle lines
+      const bristleCount = 4;
+      for (let i = 0; i < bristleCount; i++) {
+        const bOff = (i - bristleCount / 2) * (tipSpread * 0.5);
+        ctx.beginPath();
+        ctx.moveTo(bOff + wobble * 0.1, -2);
+        ctx.lineTo(bOff * (1 + pressure * 0.3) + wobble * 0.1, tipLen * 0.7);
+        ctx.strokeStyle = `rgba(30, 28, 25, ${0.15 + Math.random() * 0.1})`;
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+      }
+
+      ctx.restore();
 
       animId = requestAnimationFrame(draw);
     };
@@ -228,7 +273,7 @@ function HeroCanvas() {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="w-full h-full" />;
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />;
 }
 
 /* ── data ── */
@@ -343,39 +388,33 @@ export default function App() {
 
       <main>
         {/* ── hero ── */}
-        <section className="relative overflow-hidden">
+        <section className="relative overflow-hidden min-h-[70vh] sm:min-h-[80vh] flex items-center">
           <div className="grain absolute inset-0" />
-          <Container className="relative">
-            <div className="py-24 sm:py-36 grid sm:grid-cols-2 gap-12 items-center">
-              <div>
-                <h1 className="font-light text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.05] tracking-tight text-black/90">
-                  Art lives in the
-                  <br />
-                  space between.
-                </h1>
-                <p className="mt-6 max-w-lg text-base leading-relaxed text-black/50">
-                  Monochrome Studio is an art practice rooted in material honesty and formal restraint.
-                  We make work that asks you to slow down.
-                </p>
-                <div className="mt-10 flex items-center gap-8">
-                  <a
-                    href="#work"
-                    className="text-[13px] tracking-wide uppercase border-b border-black/30 pb-1 text-black/70 hover:text-black hover:border-black transition-colors"
-                  >
-                    View work
-                  </a>
-                  <a
-                    href="#contact"
-                    className="text-[13px] tracking-wide uppercase text-black/40 hover:text-black/70 transition-colors"
-                  >
-                    Get in touch
-                  </a>
-                </div>
-              </div>
-
-              {/* generative art canvas */}
-              <div className="hidden sm:block aspect-square overflow-hidden">
-                <HeroCanvas />
+          <HeroCanvas />
+          <Container className="relative z-10">
+            <div className="py-24 sm:py-36 max-w-xl">
+              <h1 className="font-light text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.05] tracking-tight text-black/90">
+                Art lives in the
+                <br />
+                space between.
+              </h1>
+              <p className="mt-6 max-w-lg text-base leading-relaxed text-black/50">
+                Monochrome Studio is an art practice rooted in material honesty and formal restraint.
+                We make work that asks you to slow down.
+              </p>
+              <div className="mt-10 flex items-center gap-8">
+                <a
+                  href="#work"
+                  className="text-[13px] tracking-wide uppercase border-b border-black/30 pb-1 text-black/70 hover:text-black hover:border-black transition-colors"
+                >
+                  View work
+                </a>
+                <a
+                  href="#contact"
+                  className="text-[13px] tracking-wide uppercase text-black/40 hover:text-black/70 transition-colors"
+                >
+                  Get in touch
+                </a>
               </div>
             </div>
           </Container>
