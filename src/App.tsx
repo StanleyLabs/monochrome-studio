@@ -9,7 +9,7 @@ function Container({ children, className }: { children: React.ReactNode; classNa
   return <div className={cn("mx-auto w-full max-w-6xl px-6 sm:px-10", className)}>{children}</div>;
 }
 
-/* ── generative hero canvas ── */
+/* ── animated paintbrush hero canvas ── */
 function HeroCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -20,101 +20,201 @@ function HeroCanvas() {
     if (!ctx) return;
 
     let animId: number;
-    let t = 0;
+    let w = 0;
+    let h = 0;
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      ctx.scale(dpr, dpr);
+      w = rect.width;
+      h = rect.height;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
     resize();
     window.addEventListener("resize", resize);
 
-    // A set of slowly drifting ink-like forms
-    const forms = Array.from({ length: 7 }, () => ({
-      x: 0.2 + Math.random() * 0.6,
-      y: 0.15 + Math.random() * 0.7,
-      r: 30 + Math.random() * 60,
-      phase: Math.random() * Math.PI * 2,
-      speed: 0.3 + Math.random() * 0.4,
-      drift: 0.15 + Math.random() * 0.25,
-      opacity: 0.04 + Math.random() * 0.06,
-      sides: 3 + Math.floor(Math.random() * 4),
-      rotation: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 0.2,
-    }));
+    // brush state
+    let bx = 0;
+    let by = 0;
+    let angle = Math.random() * Math.PI * 2;
+    let speed = 1.8;
+    let turnNoise = Math.random() * 1000;
 
-    // Thin lines that slowly draw across
-    const lines = Array.from({ length: 4 }, () => ({
-      y: 0.2 + Math.random() * 0.6,
-      speed: 0.08 + Math.random() * 0.12,
-      phase: Math.random() * Math.PI * 2,
-      opacity: 0.06 + Math.random() * 0.06,
-      wave: 15 + Math.random() * 25,
-    }));
+    // stroke history — persistent marks
+    const strokes: Array<{ x: number; y: number; size: number; opacity: number; angle: number }> = [];
+    const maxStrokes = 2500;
+
+    // splatter particles
+    const splatters: Array<{
+      x: number; y: number; size: number; opacity: number; life: number; maxLife: number;
+    }> = [];
+
+    // brush tip shape — paint a bristle-like stamp
+    const paintBrush = (x: number, y: number, size: number, opacity: number, ang: number) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(ang);
+      ctx.globalAlpha = opacity;
+
+      // main bristle body
+      const bristles = 5 + Math.floor(size / 4);
+      for (let i = 0; i < bristles; i++) {
+        const offset = (i - bristles / 2) * (size / bristles) * 0.9;
+        const bristleLen = size * (0.6 + Math.random() * 0.5);
+        const bristleW = Math.max(0.5, size / bristles * 0.7);
+        ctx.beginPath();
+        ctx.ellipse(offset, 0, bristleW, bristleLen * 0.5, 0, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(30, 28, 25, ${0.3 + Math.random() * 0.4})`;
+        ctx.fill();
+      }
+
+      ctx.restore();
+    };
+
+    // simple 2D noise-ish function
+    const noise = (v: number) => {
+      const s = Math.sin(v * 127.1 + 311.7) * 43758.5453;
+      return s - Math.floor(s);
+    };
+
+    const smoothNoise = (v: number) => {
+      const i = Math.floor(v);
+      const f = v - i;
+      const t = f * f * (3 - 2 * f);
+      return noise(i) * (1 - t) + noise(i + 1) * t;
+    };
+
+    // init brush position
+    const initBrush = () => {
+      bx = w * 0.5;
+      by = h * 0.5;
+    };
+
+    initBrush();
+
+    let t = 0;
+    let phaseTimer = 0;
+    let currentStrokeSize = 6 + Math.random() * 10;
+    let lifting = false;
 
     const draw = () => {
-      const w = canvas.getBoundingClientRect().width;
-      const h = canvas.getBoundingClientRect().height;
+      t += 1;
+      turnNoise += 0.012;
+
+      // slowly fade the whole canvas to let old marks age
+      // we redraw everything from strokes array instead
       ctx.clearRect(0, 0, w, h);
 
-      t += 0.008;
+      // steer brush with flowing curves
+      const n1 = smoothNoise(turnNoise) - 0.5;
+      const n2 = smoothNoise(turnNoise * 1.7 + 50) - 0.5;
+      angle += n1 * 0.12 + n2 * 0.06;
 
-      // draw organic forms
-      for (const f of forms) {
-        const cx = w * f.x + Math.sin(t * f.speed + f.phase) * w * f.drift;
-        const cy = h * f.y + Math.cos(t * f.speed * 0.7 + f.phase) * h * f.drift * 0.5;
-        const rot = f.rotation + t * f.rotSpeed;
+      // slight pull toward center to keep brush in frame
+      const cx = w * 0.5;
+      const cy = h * 0.5;
+      const dx = cx - bx;
+      const dy = cy - by;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const maxDist = Math.min(w, h) * 0.42;
+      if (dist > maxDist * 0.5) {
+        const pull = ((dist - maxDist * 0.5) / maxDist) * 0.03;
+        angle += Math.atan2(dy, dx) * pull - angle * pull * 0.3;
+      }
 
+      // vary speed
+      speed = 1.5 + smoothNoise(turnNoise * 0.8 + 100) * 2;
+
+      bx += Math.cos(angle) * speed;
+      by += Math.sin(angle) * speed;
+
+      // stroke phases — paint, then lift, then paint again
+      phaseTimer++;
+      if (!lifting && phaseTimer > 80 + Math.random() * 200) {
+        lifting = true;
+        phaseTimer = 0;
+      } else if (lifting && phaseTimer > 15 + Math.random() * 40) {
+        lifting = false;
+        phaseTimer = 0;
+        currentStrokeSize = 4 + Math.random() * 12;
+      }
+
+      // add stroke marks when painting
+      if (!lifting) {
+        const size = currentStrokeSize * (0.7 + smoothNoise(t * 0.05) * 0.6);
+        const opacity = 0.08 + smoothNoise(t * 0.03 + 200) * 0.12;
+        strokes.push({ x: bx, y: by, size, opacity, angle });
+
+        // occasional splatter
+        if (Math.random() < 0.03) {
+          const count = 1 + Math.floor(Math.random() * 3);
+          for (let i = 0; i < count; i++) {
+            const sAngle = angle + (Math.random() - 0.5) * 2;
+            const sDist = 5 + Math.random() * 20;
+            splatters.push({
+              x: bx + Math.cos(sAngle) * sDist,
+              y: by + Math.sin(sAngle) * sDist,
+              size: 1 + Math.random() * 3,
+              opacity: 0.1 + Math.random() * 0.15,
+              life: 0,
+              maxLife: 300 + Math.random() * 200,
+            });
+          }
+        }
+
+        if (strokes.length > maxStrokes) {
+          strokes.splice(0, strokes.length - maxStrokes);
+        }
+      }
+
+      // render all strokes
+      for (const s of strokes) {
+        paintBrush(s.x, s.y, s.size, s.opacity, s.angle);
+      }
+
+      // render splatters
+      for (let i = splatters.length - 1; i >= 0; i--) {
+        const sp = splatters[i];
+        sp.life++;
+        const fade = 1 - sp.life / sp.maxLife;
+        if (fade <= 0) {
+          splatters.splice(i, 1);
+          continue;
+        }
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, sp.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(30, 28, 25, ${sp.opacity * fade})`;
+        ctx.fill();
+      }
+
+      // draw the brush itself (the "handle")
+      if (!lifting) {
         ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(rot);
+        ctx.translate(bx, by);
+        ctx.rotate(angle - Math.PI * 0.5);
+
+        // handle
         ctx.beginPath();
-
-        const points = f.sides;
-        for (let i = 0; i <= points; i++) {
-          const angle = (i / points) * Math.PI * 2;
-          const wobble = 1 + Math.sin(t * 1.5 + angle * 2 + f.phase) * 0.3;
-          const px = Math.cos(angle) * f.r * wobble;
-          const py = Math.sin(angle) * f.r * wobble;
-          if (i === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
-        }
-
-        ctx.closePath();
-        ctx.fillStyle = `rgba(0, 0, 0, ${f.opacity})`;
+        ctx.roundRect(-2.5, -35, 5, 30, 2);
+        ctx.fillStyle = "rgba(80, 65, 50, 0.5)";
         ctx.fill();
+
+        // ferrule
+        ctx.beginPath();
+        ctx.roundRect(-3.5, -8, 7, 8, 1);
+        ctx.fillStyle = "rgba(160, 155, 145, 0.45)";
+        ctx.fill();
+
+        // bristle tip
+        ctx.beginPath();
+        ctx.ellipse(0, 4, currentStrokeSize * 0.4, 6, 0, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(30, 28, 25, 0.35)";
+        ctx.fill();
+
         ctx.restore();
-      }
-
-      // draw drifting lines
-      for (const l of lines) {
-        ctx.beginPath();
-        ctx.strokeStyle = `rgba(0, 0, 0, ${l.opacity})`;
-        ctx.lineWidth = 0.5;
-        for (let x = 0; x <= w; x += 3) {
-          const y =
-            h * l.y +
-            Math.sin(x * 0.008 + t * l.speed + l.phase) * l.wave +
-            Math.sin(x * 0.003 + t * 0.3) * l.wave * 0.5;
-          if (x === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-      }
-
-      // small scattered dots that fade in and out
-      for (let i = 0; i < 12; i++) {
-        const dx = w * (0.1 + ((i * 0.618033988) % 1) * 0.8);
-        const dy = h * (0.1 + (((i * 7 + 3) * 0.618033988) % 1) * 0.8);
-        const dotOp = (Math.sin(t * 0.5 + i * 2.3) + 1) * 0.03;
-        ctx.beginPath();
-        ctx.arc(dx + Math.sin(t * 0.4 + i) * 8, dy + Math.cos(t * 0.3 + i) * 8, 2, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(0, 0, 0, ${dotOp})`;
-        ctx.fill();
       }
 
       animId = requestAnimationFrame(draw);
@@ -274,7 +374,7 @@ export default function App() {
               </div>
 
               {/* generative art canvas */}
-              <div className="hidden sm:block aspect-square rounded-sm overflow-hidden bg-[#f0ece6]">
+              <div className="hidden sm:block aspect-square overflow-hidden">
                 <HeroCanvas />
               </div>
             </div>
