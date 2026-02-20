@@ -9,7 +9,7 @@ function Container({ children, className }: { children: React.ReactNode; classNa
   return <div className={cn("mx-auto w-full max-w-6xl px-6 sm:px-10", className)}>{children}</div>;
 }
 
-/* ── animated paintbrush hero canvas ── */
+/* ── particle hero canvas ── */
 function HeroCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -19,248 +19,72 @@ function HeroCanvas() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // offscreen canvas for persistent marks
-    const marks = document.createElement("canvas");
-    const mctx = marks.getContext("2d")!;
-
     let animId: number;
     let w = 0;
     let h = 0;
-    let dpr = 1;
 
     const resize = () => {
-      dpr = window.devicePixelRatio || 1;
+      const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
       w = rect.width;
       h = rect.height;
-
-      // save existing marks
-      const snapshot = marks.width > 0 ? mctx.getImageData(0, 0, marks.width, marks.height) : null;
-
       canvas.width = w * dpr;
       canvas.height = h * dpr;
-      marks.width = w * dpr;
-      marks.height = h * dpr;
-
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      // restore marks after resize
-      if (snapshot) {
-        mctx.putImageData(snapshot, 0, 0);
-      }
     };
 
     resize();
     window.addEventListener("resize", resize);
 
-    // noise helpers
-    const noise = (v: number) => {
-      const s = Math.sin(v * 127.1 + 311.7) * 43758.5453;
-      return s - Math.floor(s);
-    };
-    const smoothNoise = (v: number) => {
-      const i = Math.floor(v);
-      const f = v - i;
-      const t = f * f * (3 - 2 * f);
-      return noise(i) * (1 - t) + noise(i + 1) * t;
-    };
+    const count = 80;
+    const particles = Array.from({ length: count }, () => ({
+      x: Math.random() * 1,
+      y: Math.random() * 1,
+      vx: (Math.random() - 0.5) * 0.0004,
+      vy: (Math.random() - 0.5) * 0.0004,
+      r: 1 + Math.random() * 2,
+      opacity: 0.04 + Math.random() * 0.08,
+    }));
 
-    // brush state
-    let bx = w * 0.6;
-    let by = h * 0.4;
-    let angle = Math.random() * Math.PI * 2;
-    let targetAngle = angle;
-    let turnNoise = Math.random() * 1000;
-    let pressure = 0.7;
-    let targetPressure = 0.7;
-    let tilt = 0;
-
-    let phaseTimer = 0;
-    let currentStrokeSize = 8 + Math.random() * 10;
-    let lifting = false;
-    let liftX = bx;
-    let liftY = by;
-    let t = 0;
-
-    // paint a bristle mark onto the offscreen canvas
-    const stampBristle = (x: number, y: number, size: number, opacity: number, ang: number, press: number) => {
-      mctx.save();
-      mctx.translate(x, y);
-      mctx.rotate(ang);
-      mctx.globalAlpha = opacity * press;
-
-      const spread = size * press;
-      const bristles = 6 + Math.floor(size / 3);
-
-      for (let i = 0; i < bristles; i++) {
-        const off = (i - bristles / 2) * (spread / bristles) * 1.1;
-        const bLen = size * (0.4 + Math.random() * 0.4) * press;
-        const bW = Math.max(0.4, spread / bristles * 0.6);
-        mctx.beginPath();
-        mctx.ellipse(off, 0, bW, bLen * 0.5, 0, 0, Math.PI * 2);
-        mctx.fillStyle = `rgba(30, 28, 25, ${0.25 + Math.random() * 0.35})`;
-        mctx.fill();
-      }
-
-      mctx.restore();
-    };
+    const connectionDist = 0.12;
 
     const draw = () => {
-      t += 1;
-      turnNoise += 0.008;
-
-      // clear display canvas, then composite marks + live brush
       ctx.clearRect(0, 0, w, h);
 
-      // ── steer brush ──
-      // layered noise for organic curves
-      const n1 = smoothNoise(turnNoise) - 0.5;
-      const n2 = smoothNoise(turnNoise * 1.3 + 50) - 0.5;
-      const n3 = smoothNoise(turnNoise * 0.4 + 200) - 0.5;
-      targetAngle += n1 * 0.08 + n2 * 0.05 + n3 * 0.03;
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
 
-      // smooth angle interpolation for fluid motion
-      let angleDiff = targetAngle - angle;
-      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-      angle += angleDiff * 0.12;
+        // wrap
+        if (p.x < 0) p.x = 1;
+        if (p.x > 1) p.x = 0;
+        if (p.y < 0) p.y = 1;
+        if (p.y > 1) p.y = 0;
 
-      // gentle pull toward center region (wide bounds since it's full-width)
-      const cx = w * 0.55;
-      const cy = h * 0.5;
-      const dx = cx - bx;
-      const dy = cy - by;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const maxDist = Math.max(w, h) * 0.4;
-      if (dist > maxDist * 0.3) {
-        const pull = ((dist - maxDist * 0.3) / maxDist) * 0.02;
-        const toCenter = Math.atan2(dy, dx);
-        targetAngle += (toCenter - targetAngle) * pull;
-      }
-
-      // keep in bounds with soft wrapping
-      const margin = 30;
-      if (bx < margin) targetAngle = Math.abs(targetAngle) < Math.PI / 2 ? targetAngle : 0;
-      if (bx > w - margin) targetAngle = Math.abs(targetAngle) > Math.PI / 2 ? targetAngle : Math.PI;
-      if (by < margin) targetAngle = targetAngle > 0 ? targetAngle : Math.PI * 0.5;
-      if (by > h - margin) targetAngle = targetAngle < 0 ? targetAngle : -Math.PI * 0.5;
-
-      // variable speed — slow down on curves, speed up on straights
-      const curvature = Math.abs(angleDiff);
-      const speed = (2.0 + smoothNoise(turnNoise * 0.6 + 100) * 2.5) * (1 - curvature * 0.3);
-
-      bx += Math.cos(angle) * speed;
-      by += Math.sin(angle) * speed;
-
-      // tilt wobble
-      tilt = Math.sin(t * 0.04) * 0.15 + Math.sin(t * 0.11) * 0.08;
-
-      // smooth pressure changes
-      targetPressure = 0.5 + smoothNoise(turnNoise * 0.5 + 300) * 0.5;
-      pressure += (targetPressure - pressure) * 0.05;
-
-      // ── stroke phases ──
-      phaseTimer++;
-      if (!lifting && phaseTimer > 120 + Math.random() * 250) {
-        lifting = true;
-        liftX = bx;
-        liftY = by;
-        phaseTimer = 0;
-      } else if (lifting && phaseTimer > 25 + Math.random() * 50) {
-        lifting = false;
-        phaseTimer = 0;
-        currentStrokeSize = 5 + Math.random() * 14;
-      }
-
-      // ── stamp marks onto offscreen canvas ──
-      if (!lifting) {
-        const size = currentStrokeSize * (0.6 + smoothNoise(t * 0.04) * 0.5);
-        const opacity = 0.06 + smoothNoise(t * 0.025 + 200) * 0.1;
-        stampBristle(bx, by, size, opacity, angle + tilt, pressure);
-
-        // splatters
-        if (Math.random() < 0.025) {
-          const count = 1 + Math.floor(Math.random() * 4);
-          for (let i = 0; i < count; i++) {
-            const sAngle = angle + (Math.random() - 0.5) * 2.5;
-            const sDist = 8 + Math.random() * 30;
-            const sx = bx + Math.cos(sAngle) * sDist;
-            const sy = by + Math.sin(sAngle) * sDist;
-            const sSize = 0.8 + Math.random() * 2.5;
-            mctx.beginPath();
-            mctx.arc(sx, sy, sSize, 0, Math.PI * 2);
-            mctx.fillStyle = `rgba(30, 28, 25, ${0.08 + Math.random() * 0.12})`;
-            mctx.fill();
-          }
-        }
-      }
-
-      // ── composite marks onto display ──
-      ctx.drawImage(marks, 0, 0, w * dpr, h * dpr, 0, 0, w, h);
-
-      // ── draw the brush ──
-      const brushX = lifting ? liftX + (bx - liftX) * 0.3 : bx;
-      const brushY = lifting ? liftY + (by - liftY) * 0.3 - 15 * Math.sin(phaseTimer * 0.08) : by;
-      const brushAngle = angle + tilt - Math.PI * 0.5;
-      const brushLift = lifting ? 0.3 : 0.7;
-
-      ctx.save();
-      ctx.globalAlpha = brushLift;
-      ctx.translate(brushX, brushY);
-      ctx.rotate(brushAngle);
-
-      // shadow when close to surface
-      if (!lifting) {
+        // draw dot
         ctx.beginPath();
-        ctx.ellipse(2, 8, currentStrokeSize * 0.35 * pressure, 3, 0.2, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(0,0,0,0.06)";
+        ctx.arc(p.x * w, p.y * h, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 0, 0, ${p.opacity})`;
         ctx.fill();
       }
 
-      // handle — wooden brush handle
-      const wobble = Math.sin(t * 0.06) * 1.5;
-      ctx.beginPath();
-      ctx.roundRect(-3 + wobble * 0.3, -50, 6, 38, 2.5);
-      ctx.fillStyle = "rgba(120, 90, 60, 0.55)";
-      ctx.fill();
-      // handle highlight
-      ctx.beginPath();
-      ctx.roundRect(-1 + wobble * 0.3, -48, 2, 34, 1);
-      ctx.fillStyle = "rgba(180, 150, 110, 0.2)";
-      ctx.fill();
-
-      // ferrule — metal band
-      ctx.beginPath();
-      ctx.roundRect(-4.5 + wobble * 0.2, -14, 9, 12, 1.5);
-      ctx.fillStyle = "rgba(170, 165, 155, 0.5)";
-      ctx.fill();
-      ctx.beginPath();
-      ctx.roundRect(-3.5 + wobble * 0.2, -13, 7, 10, 1);
-      ctx.fillStyle = "rgba(190, 185, 175, 0.25)";
-      ctx.fill();
-
-      // bristle tip — varies with pressure
-      const tipSpread = currentStrokeSize * 0.4 * (0.7 + pressure * 0.5);
-      const tipLen = 8 + pressure * 4;
-      ctx.beginPath();
-      ctx.ellipse(wobble * 0.15, tipLen * 0.3, tipSpread, tipLen * 0.5, 0, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(30, 28, 25, ${0.25 + pressure * 0.15})`;
-      ctx.fill();
-
-      // individual bristle lines
-      const bristleCount = 4;
-      for (let i = 0; i < bristleCount; i++) {
-        const bOff = (i - bristleCount / 2) * (tipSpread * 0.5);
-        ctx.beginPath();
-        ctx.moveTo(bOff + wobble * 0.1, -2);
-        ctx.lineTo(bOff * (1 + pressure * 0.3) + wobble * 0.1, tipLen * 0.7);
-        ctx.strokeStyle = `rgba(30, 28, 25, ${0.15 + Math.random() * 0.1})`;
-        ctx.lineWidth = 0.6;
-        ctx.stroke();
+      // draw connections
+      ctx.lineWidth = 0.5;
+      for (let i = 0; i < count; i++) {
+        for (let j = i + 1; j < count; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < connectionDist) {
+            const alpha = (1 - d / connectionDist) * 0.06;
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x * w, particles[i].y * h);
+            ctx.lineTo(particles[j].x * w, particles[j].y * h);
+            ctx.strokeStyle = `rgba(0, 0, 0, ${alpha})`;
+            ctx.stroke();
+          }
+        }
       }
-
-      ctx.restore();
 
       animId = requestAnimationFrame(draw);
     };
