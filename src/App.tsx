@@ -17,32 +17,9 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Modal({ open, title, onClose }: { open: boolean; title: string; onClose: () => void }) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="dialog" aria-modal="true">
-      <div className="w-full max-w-3xl overflow-hidden rounded-3xl border border-black/10 bg-[#fbf7f1] shadow-[0_30px_90px_rgba(0,0,0,0.25)]">
-        <div className="flex items-center justify-between border-b border-black/10 bg-white/60 px-5 py-4">
-          <div className="font-mono text-xs text-black/70">{title}</div>
-          <button
-            onClick={onClose}
-            className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-black/80 hover:bg-white/90"
-          >
-            Close
-          </button>
-        </div>
-        <div className="p-0">
-          <iframe title="Deck" src="/deck.html" className="h-[70vh] w-full" />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function App() {
   const [tab, setTab] = useState<"studio" | "product" | "systems">("studio");
-  const [deckOpen, setDeckOpen] = useState(false);
-
   const tabs = useMemo(
     () =>
       ({
@@ -164,13 +141,14 @@ export default function App() {
                   >
                     Start a project
                   </a>
-                  <button
-                    type="button"
-                    onClick={() => setDeckOpen(true)}
+                  <a
+                    href="/deck.html"
+                    target="_blank"
+                    rel="noreferrer"
                     className="inline-flex items-center justify-center rounded-full border border-black/15 bg-white/60 px-6 py-3 text-sm font-semibold text-black/80 hover:bg-white"
                   >
                     View deck
-                  </button>
+                  </a>
                 </div>
 
                 <div className="mt-10 grid gap-4 sm:grid-cols-3">
@@ -180,7 +158,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-black/10 bg-white/70 p-6">
+              <div className="rounded-3xl border border-black/10 bg-white/70 p-6 overflow-hidden">
                 <div className="font-mono text-xs text-black/60">What you get</div>
                 <div className="mt-3 rounded-2xl border border-black/10 bg-[#0b0d12] p-5 text-white">
                   <div className="flex items-center justify-between">
@@ -224,7 +202,7 @@ export default function App() {
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
               {caseStudies.map((c) => (
-                <div key={c.title} className="rounded-3xl border border-black/10 bg-white/70 p-6">
+                <div key={c.title} className="rounded-3xl border border-black/10 bg-white/70 p-6 overflow-hidden">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="font-mono text-xs text-black/60">{c.meta}</div>
@@ -234,7 +212,7 @@ export default function App() {
                       {c.result}
                     </div>
                   </div>
-                  <div className="mt-3 text-sm text-black/65">{c.body}</div>
+                  <div className="mt-3 text-sm text-black/65 break-words">{c.body}</div>
                   <ul className="mt-4 grid gap-2">
                     {c.bullets.map((b) => (
                       <li key={b} className="rounded-2xl border border-black/10 bg-white/60 p-3">
@@ -302,18 +280,19 @@ export default function App() {
               </p>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <a
-                  href="mailto:hello@stanleylabs.co?subject=Monochrome%20Studio%20Inquiry"
+                  href="mailto:hello@stanleylabs.com?subject=Monochrome%20Studio%20Inquiry"
                   className="inline-flex items-center justify-center rounded-full bg-[#f59e0b] px-6 py-3 text-sm font-semibold text-black hover:bg-[#f59e0b]/90"
                 >
                   Email us
                 </a>
-                <button
-                  type="button"
-                  onClick={() => setDeckOpen(true)}
+                <a
+                  href="/deck.html"
+                  target="_blank"
+                  rel="noreferrer"
                   className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10"
                 >
                   View deck
-                </button>
+                </a>
               </div>
             </div>
           </Container>
@@ -332,8 +311,6 @@ export default function App() {
           </Container>
         </footer>
       </main>
-
-      <Modal open={deckOpen} title="View deck" onClose={() => setDeckOpen(false)} />
     </div>
   );
 }
