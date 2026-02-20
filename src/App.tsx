@@ -54,21 +54,17 @@ function HeroCanvas() {
       for (const p of particles) {
         p.x += p.vx;
         p.y += p.vy;
-
-        // wrap
         if (p.x < 0) p.x = 1;
         if (p.x > 1) p.x = 0;
         if (p.y < 0) p.y = 1;
         if (p.y > 1) p.y = 0;
 
-        // draw dot
         ctx.beginPath();
         ctx.arc(p.x * w, p.y * h, p.r, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(0, 0, 0, ${p.opacity})`;
         ctx.fill();
       }
 
-      // draw connections
       ctx.lineWidth = 0.5;
       for (let i = 0; i < count; i++) {
         for (let j = i + 1; j < count; j++) {
@@ -103,51 +99,51 @@ function HeroCanvas() {
 /* ── data ── */
 const works = [
   {
-    title: "Silence Between",
-    medium: "Oil on linen",
-    year: "2026",
-    dimensions: '48 × 36"',
-    color: "bg-stone-300",
-    aspect: "aspect-[3/4]",
-  },
-  {
-    title: "Weight of Light",
-    medium: "Charcoal & graphite",
-    year: "2025",
-    dimensions: '60 × 40"',
-    color: "bg-zinc-200",
-    aspect: "aspect-[2/3]",
-  },
-  {
-    title: "Territory",
-    medium: "Mixed media on panel",
-    year: "2026",
-    dimensions: '36 × 36"',
-    color: "bg-neutral-300",
-    aspect: "aspect-square",
-  },
-  {
-    title: "After the Flood",
-    medium: "Ink wash on paper",
-    year: "2025",
-    dimensions: '24 × 18"',
-    color: "bg-stone-200",
-    aspect: "aspect-[3/4]",
-  },
-  {
-    title: "Object Lesson",
-    medium: "Bronze & found steel",
-    year: "2026",
-    dimensions: '18 × 12 × 8"',
-    color: "bg-zinc-300",
+    title: "Black in Deep Red",
+    artist: "Mark Rothko",
+    year: "1957",
+    medium: "Oil on canvas",
+    image: "https://uploads1.wikiart.org/images/mark-rothko/black-in-deep-red-1957.jpg",
     aspect: "aspect-[4/5]",
   },
   {
-    title: "Fugue State",
-    medium: "Acrylic & gesso",
-    year: "2024",
-    dimensions: '72 × 48"',
-    color: "bg-neutral-200",
+    title: "Painting",
+    artist: "Franz Kline",
+    year: "1952",
+    medium: "Oil on canvas",
+    image: "https://uploads4.wikiart.org/images/franz-kline/painting-1952.jpg",
+    aspect: "aspect-[4/5]",
+  },
+  {
+    title: "Untitled (Free Form)",
+    artist: "Robert Motherwell",
+    year: "1946",
+    medium: "Oil on canvas",
+    image: "https://uploads6.wikiart.org/00268/images/robert-motherwell/42-198-ph-web.jpg",
+    aspect: "aspect-square",
+  },
+  {
+    title: "Concetto Spaziale, Attese",
+    artist: "Lucio Fontana",
+    year: "1960",
+    medium: "Water-based paint on canvas",
+    image: "https://uploads0.wikiart.org/images/lucio-fontana/concetto-spaziale-attese-1960-1.jpg",
+    aspect: "aspect-[3/4]",
+  },
+  {
+    title: "Black Fire I",
+    artist: "Barnett Newman",
+    year: "1961",
+    medium: "Oil on canvas",
+    image: "https://uploads7.wikiart.org/images/barnett-newman/black-fire-i-1961.jpg",
+    aspect: "aspect-[2/3]",
+  },
+  {
+    title: "Sumi Ink",
+    artist: "Yun Hyong-keun",
+    year: "1989",
+    medium: "Oil on linen",
+    image: "https://uploads2.wikiart.org/images/yun-hyong-keun/burnt-umber-ultramarine-1989.jpg",
     aspect: "aspect-[3/4]",
   },
 ];
@@ -250,32 +246,41 @@ export default function App() {
         {/* ── work grid ── */}
         <section id="work" className="py-20 sm:py-28">
           <Container>
-            <div className="flex items-end justify-between mb-12">
+            <div className="flex items-end justify-between mb-4">
               <div>
-                <p className="text-[11px] tracking-[0.2em] uppercase text-black/35 mb-3">Selected Works</p>
-                <h2 className="font-light text-3xl sm:text-4xl tracking-tight text-black/85">Recent work</h2>
+                <p className="text-[11px] tracking-[0.2em] uppercase text-black/35 mb-3">Inspiration</p>
+                <h2 className="font-light text-3xl sm:text-4xl tracking-tight text-black/85">
+                  Works that move us
+                </h2>
               </div>
-              <p className="hidden sm:block text-[11px] tracking-wide uppercase text-black/30">2024 — 2026</p>
+              <p className="hidden sm:block text-[11px] tracking-wide uppercase text-black/30">
+                Artists we admire
+              </p>
             </div>
+            <p className="text-[13px] text-black/40 mb-12 max-w-2xl">
+              These works are by the original artists credited below — not by Monochrome Studio.
+              We showcase them here as the lineage and inspiration behind our practice.
+            </p>
 
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {works.map((w) => (
                 <div key={w.title} className="art-card group cursor-pointer">
-                  <div className={cn("overflow-hidden rounded-sm", w.aspect, w.color)}>
-                    <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-[11px] tracking-[0.15em] uppercase text-black/20 select-none">
-                        {w.medium}
-                      </span>
-                    </div>
+                  <div className={cn("overflow-hidden rounded-sm bg-neutral-200", w.aspect)}>
+                    <img
+                      src={w.image}
+                      alt={`${w.title} by ${w.artist}`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
                   </div>
-                  <div className="mt-4 flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="text-sm font-normal text-black/80 group-hover:text-black transition-colors">
-                        {w.title}
-                      </h3>
-                      <p className="text-[12px] text-black/40 mt-0.5">{w.medium}</p>
-                    </div>
-                    <p className="text-[11px] text-black/30 shrink-0 mt-0.5">{w.year}</p>
+                  <div className="mt-4">
+                    <h3 className="text-sm font-normal text-black/80 group-hover:text-black transition-colors italic">
+                      {w.title}
+                    </h3>
+                    <p className="text-[13px] text-black/60 mt-1 font-medium">{w.artist}</p>
+                    <p className="text-[11px] text-black/35 mt-0.5">
+                      {w.medium}, {w.year}
+                    </p>
                   </div>
                 </div>
               ))}
