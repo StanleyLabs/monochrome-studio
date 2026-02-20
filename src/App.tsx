@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 /* ── helpers ── */
 function cn(...x: Array<string | false | null | undefined>) {
@@ -7,6 +7,128 @@ function cn(...x: Array<string | false | null | undefined>) {
 
 function Container({ children, className }: { children: React.ReactNode; className?: string }) {
   return <div className={cn("mx-auto w-full max-w-6xl px-6 sm:px-10", className)}>{children}</div>;
+}
+
+/* ── generative hero canvas ── */
+function HeroCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animId: number;
+    let t = 0;
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+
+    // A set of slowly drifting ink-like forms
+    const forms = Array.from({ length: 7 }, () => ({
+      x: 0.2 + Math.random() * 0.6,
+      y: 0.15 + Math.random() * 0.7,
+      r: 30 + Math.random() * 60,
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.3 + Math.random() * 0.4,
+      drift: 0.15 + Math.random() * 0.25,
+      opacity: 0.04 + Math.random() * 0.06,
+      sides: 3 + Math.floor(Math.random() * 4),
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.2,
+    }));
+
+    // Thin lines that slowly draw across
+    const lines = Array.from({ length: 4 }, () => ({
+      y: 0.2 + Math.random() * 0.6,
+      speed: 0.08 + Math.random() * 0.12,
+      phase: Math.random() * Math.PI * 2,
+      opacity: 0.06 + Math.random() * 0.06,
+      wave: 15 + Math.random() * 25,
+    }));
+
+    const draw = () => {
+      const w = canvas.getBoundingClientRect().width;
+      const h = canvas.getBoundingClientRect().height;
+      ctx.clearRect(0, 0, w, h);
+
+      t += 0.008;
+
+      // draw organic forms
+      for (const f of forms) {
+        const cx = w * f.x + Math.sin(t * f.speed + f.phase) * w * f.drift;
+        const cy = h * f.y + Math.cos(t * f.speed * 0.7 + f.phase) * h * f.drift * 0.5;
+        const rot = f.rotation + t * f.rotSpeed;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(rot);
+        ctx.beginPath();
+
+        const points = f.sides;
+        for (let i = 0; i <= points; i++) {
+          const angle = (i / points) * Math.PI * 2;
+          const wobble = 1 + Math.sin(t * 1.5 + angle * 2 + f.phase) * 0.3;
+          const px = Math.cos(angle) * f.r * wobble;
+          const py = Math.sin(angle) * f.r * wobble;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+
+        ctx.closePath();
+        ctx.fillStyle = `rgba(0, 0, 0, ${f.opacity})`;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // draw drifting lines
+      for (const l of lines) {
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(0, 0, 0, ${l.opacity})`;
+        ctx.lineWidth = 0.5;
+        for (let x = 0; x <= w; x += 3) {
+          const y =
+            h * l.y +
+            Math.sin(x * 0.008 + t * l.speed + l.phase) * l.wave +
+            Math.sin(x * 0.003 + t * 0.3) * l.wave * 0.5;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+
+      // small scattered dots that fade in and out
+      for (let i = 0; i < 12; i++) {
+        const dx = w * (0.1 + ((i * 0.618033988) % 1) * 0.8);
+        const dy = h * (0.1 + (((i * 7 + 3) * 0.618033988) % 1) * 0.8);
+        const dotOp = (Math.sin(t * 0.5 + i * 2.3) + 1) * 0.03;
+        ctx.beginPath();
+        ctx.arc(dx + Math.sin(t * 0.4 + i) * 8, dy + Math.cos(t * 0.3 + i) * 8, 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 0, 0, ${dotOp})`;
+        ctx.fill();
+      }
+
+      animId = requestAnimationFrame(draw);
+    };
+
+    draw();
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="w-full h-full" />;
 }
 
 /* ── data ── */
@@ -103,7 +225,6 @@ export default function App() {
           </div>
         </Container>
 
-        {/* mobile menu */}
         {menuOpen && (
           <div className="sm:hidden border-t border-black/[0.06] bg-[#f5f2ed] px-6 py-6 space-y-5">
             {["Work", "Exhibitions", "About", "Contact"].map((l) => (
@@ -125,29 +246,36 @@ export default function App() {
         <section className="relative overflow-hidden">
           <div className="grain absolute inset-0" />
           <Container className="relative">
-            <div className="py-24 sm:py-36 max-w-3xl">
-              <h1 className="font-light text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.05] tracking-tight text-black/90">
-                Art lives in the
-                <br />
-                space between.
-              </h1>
-              <p className="mt-6 max-w-lg text-base leading-relaxed text-black/50">
-                Monochrome Studio is an art practice rooted in material honesty and formal restraint.
-                We make work that asks you to slow down.
-              </p>
-              <div className="mt-10 flex items-center gap-8">
-                <a
-                  href="#work"
-                  className="text-[13px] tracking-wide uppercase border-b border-black/30 pb-1 text-black/70 hover:text-black hover:border-black transition-colors"
-                >
-                  View work
-                </a>
-                <a
-                  href="#contact"
-                  className="text-[13px] tracking-wide uppercase text-black/40 hover:text-black/70 transition-colors"
-                >
-                  Get in touch
-                </a>
+            <div className="py-24 sm:py-36 grid sm:grid-cols-2 gap-12 items-center">
+              <div>
+                <h1 className="font-light text-[clamp(2.5rem,6vw,4.5rem)] leading-[1.05] tracking-tight text-black/90">
+                  Art lives in the
+                  <br />
+                  space between.
+                </h1>
+                <p className="mt-6 max-w-lg text-base leading-relaxed text-black/50">
+                  Monochrome Studio is an art practice rooted in material honesty and formal restraint.
+                  We make work that asks you to slow down.
+                </p>
+                <div className="mt-10 flex items-center gap-8">
+                  <a
+                    href="#work"
+                    className="text-[13px] tracking-wide uppercase border-b border-black/30 pb-1 text-black/70 hover:text-black hover:border-black transition-colors"
+                  >
+                    View work
+                  </a>
+                  <a
+                    href="#contact"
+                    className="text-[13px] tracking-wide uppercase text-black/40 hover:text-black/70 transition-colors"
+                  >
+                    Get in touch
+                  </a>
+                </div>
+              </div>
+
+              {/* generative art canvas */}
+              <div className="hidden sm:block aspect-square rounded-sm overflow-hidden bg-[#f0ece6]">
+                <HeroCanvas />
               </div>
             </div>
           </Container>
@@ -171,7 +299,6 @@ export default function App() {
               {works.map((w) => (
                 <div key={w.title} className="art-card group cursor-pointer">
                   <div className={cn("overflow-hidden rounded-sm", w.aspect, w.color)}>
-                    {/* placeholder — replace with real images */}
                     <div className="w-full h-full flex items-center justify-center">
                       <span className="text-[11px] tracking-[0.15em] uppercase text-black/20 select-none">
                         {w.medium}
@@ -248,7 +375,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* studio values */}
             <div className="mt-20 grid gap-px bg-black/[0.06] sm:grid-cols-3 rounded-sm overflow-hidden">
               {[
                 {
@@ -311,7 +437,6 @@ export default function App() {
         </section>
       </main>
 
-      {/* ── footer ── */}
       <footer className="border-t border-white/[0.06] bg-[#1a1a1a] py-8">
         <Container>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
