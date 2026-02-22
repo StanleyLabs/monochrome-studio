@@ -308,10 +308,10 @@ const artworks = [
 ];
 
 const exhibitions = [
-  { title: "Quiet Loud", venue: "Pace Gallery, New York", date: "Mar — May 2026" },
-  { title: "Material Evidence", venue: "White Cube, London", date: "Jan — Feb 2026" },
-  { title: "New Cartographies", venue: "MOCA, Los Angeles", date: "Sep — Dec 2025" },
-  { title: "Paper Weight", venue: "Kunsthalle, Berlin", date: "Jun — Aug 2025" },
+  { title: "Quiet Loud", venue: "Pace Gallery, New York", date: "Mar - May 2026" },
+  { title: "Material Evidence", venue: "White Cube, London", date: "Jan - Feb 2026" },
+  { title: "New Cartographies", venue: "MOCA, Los Angeles", date: "Sep - Dec 2025" },
+  { title: "Paper Weight", venue: "Kunsthalle, Berlin", date: "Jun - Aug 2025" },
 ];
 
 /* ── component ── */
@@ -437,7 +437,7 @@ export default function App() {
               </p>
             </div>
             <p className="text-[13px] text-black/40 mb-12 max-w-2xl">
-              These works are by the original artists credited below — not by Monochrome Studio.
+              These works are by the original artists credited below - not by Monochrome Studio.
               We showcase them here as the lineage and inspiration behind our practice.
             </p>
 
@@ -511,7 +511,7 @@ export default function App() {
               <div className="space-y-5 text-[15px] leading-relaxed text-black/55">
                 <p>
                   Monochrome Studio was founded in 2019 with a simple conviction: the most powerful work
-                  emerges from limitation. We strip away the unnecessary — color becomes tone, gesture
+                  emerges from limitation. We strip away the unnecessary - color becomes tone, gesture
                   becomes structure, surface becomes meaning.
                 </p>
                 <p>
@@ -520,7 +520,7 @@ export default function App() {
                   quieter traditions of East Asian painting.
                 </p>
                 <p>
-                  Every piece begins with material — its weight, its resistance, its willingness to hold
+                  Every piece begins with material - its weight, its resistance, its willingness to hold
                   a mark. We don't impose. We listen.
                 </p>
               </div>
@@ -534,7 +534,7 @@ export default function App() {
                 },
                 {
                   title: "Formal clarity",
-                  body: "Composition is editing. We pursue the irreducible — the fewest elements that still hold meaning.",
+                  body: "Composition is editing. We pursue the irreducible - the fewest elements that still hold meaning.",
                 },
                 {
                   title: "Patience",
@@ -559,7 +559,7 @@ export default function App() {
                 Let's talk about work.
               </h2>
               <p className="mt-5 text-[15px] leading-relaxed text-white/40">
-                This is a demo site — Monochrome Studio is a fictional business.
+                This is a demo site - Monochrome Studio is a fictional business.
                 Built by <a href="https://stanleylabs.dev" target="_blank" rel="noreferrer" className="text-white/60 hover:text-white/80 underline underline-offset-2 transition-colors">Stanley Labs</a> as a portfolio piece.
               </p>
 
@@ -590,7 +590,7 @@ export default function App() {
         <Container>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <p className="text-[11px] tracking-[0.15em] uppercase text-white/20">
-              Monochrome Studio — A fictional demo
+              Monochrome Studio - A fictional demo
             </p>
             <p className="text-[11px] text-white/15">Built by <a href="https://stanleylabs.dev" target="_blank" rel="noreferrer" className="text-white/25 hover:text-white/40 transition-colors">Stanley Labs</a></p>
           </div>
